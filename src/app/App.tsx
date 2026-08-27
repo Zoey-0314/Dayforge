@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns';
+import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Maximize2, Minus, Shrink, X } from 'lucide-react';
@@ -55,10 +56,10 @@ export function App() {
 
   const level = useMemo(() => getLevelProgress(totalExperience), [totalExperience]);
 
-  const refresh = useCallback(async () => {
+  const refreshForMode = useCallback(async (viewMode: HeatmapMode) => {
     const now = new Date();
-    const from = mode === 'month' ? startOfMonth(now) : startOfYear(now);
-    const to = mode === 'month' ? endOfMonth(now) : endOfYear(now);
+    const from = viewMode === 'month' ? startOfMonth(now) : startOfYear(now);
+    const to = viewMode === 'month' ? endOfMonth(now) : endOfYear(now);
     const [total, daily, nextTodos, nextHabits] = await Promise.all([
       getTotalExperience(),
       getDailyExperienceTotals(format(from, 'yyyy-MM-dd'), format(to, 'yyyy-MM-dd')),
@@ -70,7 +71,7 @@ export function App() {
     setHeatmapData(daily.map((row) => ({ dateKey: row.date_key, total: Number(row.total) })));
     setTodos(nextTodos);
     setHabits(nextHabits);
-  }, [mode]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,17 +79,20 @@ export function App() {
     async function boot() {
       try {
         await getDatabase();
-        const [loginReward, recoveredTimer] = await Promise.all([
-          grantDailyLoginIfEligible(),
-          recoverTimerAfterLaunch(),
-        ]);
+
+        // Startup writes are deliberately sequential. Running daily-login and
+        // timer recovery concurrently caused SQLite write contention on Windows.
+        const loginReward = await grantDailyLoginIfEligible();
+        const recoveredTimer = await recoverTimerAfterLaunch();
 
         if (cancelled) return;
         if (recoveredTimer) {
           setTimerSession(recoveredTimer);
           setTimerElapsed(recoveredTimer.elapsedSeconds);
         }
-        await refresh();
+
+        await refreshForMode('month');
+        if (cancelled) return;
         setReady(true);
         setError(null);
         if (loginReward > 0) setToast(`Daily login +${loginReward} EXP`);
@@ -104,7 +108,15 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [refreshForMode]);
+
+  useEffect(() => {
+    if (!ready || error) return;
+    void refreshForMode(mode).catch((cause) => {
+      console.error('Dayforge refresh failed', cause);
+      setToast(cause instanceof Error ? cause.message : 'Could not refresh Dayforge.');
+    });
+  }, [mode, ready, error, refreshForMode]);
 
   useEffect(() => {
     if (!toast) return;
@@ -118,7 +130,7 @@ export function App() {
     const id = window.setInterval(() => {
       setTimerElapsed((current) => {
         const next = current + 1;
-        if (next % 5 === 0) void checkpointTimer(timerSession.id, next);
+        if (next % 30 === 0) void checkpointTimer(timerSession.id, next);
         return next;
       });
     }, 1000);
@@ -137,14 +149,16 @@ export function App() {
         void grantOnlineExperienceForVerifiedSeconds(verified).then(async (result) => {
           if (result.awarded > 0) {
             setToast(`Online +${result.awarded} EXP`);
-            await refresh();
+            await refreshForMode(mode);
           }
+        }).catch((cause) => {
+          console.error('Online EXP write failed', cause);
         });
       }
     }, 60_000);
 
     return () => window.clearInterval(heartbeat);
-  }, [refresh]);
+  }, [mode, refreshForMode]);
 
   async function toggleExpanded() {
     try {
@@ -167,9 +181,9 @@ export function App() {
 
   async function closeWindow() {
     try {
-      await getCurrentWindow().close();
+      await invoke('quit_app');
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'Could not close Dayforge.');
+      setToast(cause instanceof Error ? cause.message : 'Could not quit Dayforge.');
     }
   }
 
@@ -190,7 +204,7 @@ export function App() {
     try {
       await createTodo({ title: todoTitle, taskType: todoType, difficulty: todoDifficulty });
       setTodoTitle('');
-      await refresh();
+      await refreshForMode(mode);
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'Could not save task.');
     }
@@ -200,7 +214,7 @@ export function App() {
     try {
       const reward = await completeTodo(id);
       if (reward > 0) setToast(`Task complete +${reward} EXP`);
-      await refresh();
+      await refreshForMode(mode);
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'Could not complete task.');
     }
@@ -212,7 +226,7 @@ export function App() {
     try {
       await createHabit({ title: habitTitle, difficulty: habitDifficulty, rewardCapPerDay: 8 });
       setHabitTitle('');
-      await refresh();
+      await refreshForMode(mode);
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'Could not save habit.');
     }
@@ -222,7 +236,7 @@ export function App() {
     try {
       const result = await checkInHabit(id);
       setToast(result.rewarded ? `Check-in +${result.experience} EXP` : 'Check-in saved · daily EXP cap reached');
-      await refresh();
+      await refreshForMode(mode);
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'Could not save check-in.');
     }
@@ -260,7 +274,7 @@ export function App() {
       setTimerSession(null);
       setTimerElapsed(0);
       setToast(reward > 0 ? `Focus complete +${reward} EXP` : 'Session saved · 5 minutes required for EXP');
-      await refresh();
+      await refreshForMode(mode);
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'Could not complete timer.');
     }
@@ -301,14 +315,14 @@ export function App() {
             <button type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} title={expanded ? 'Collapse' : 'Expand'} onClick={() => void toggleExpanded()}>
               {expanded ? <Shrink size={13} strokeWidth={1.8} /> : <Maximize2 size={13} strokeWidth={1.8} />}
             </button>
-            <button className="window-chrome__close" type="button" aria-label="Close Dayforge" title="Hide to tray" onClick={() => void closeWindow()}>
+            <button className="window-chrome__close" type="button" aria-label="Quit Dayforge" title="Quit Dayforge" onClick={() => void closeWindow()}>
               <X size={14} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
-        <header className="level-strip" data-tauri-drag-region>
-          <div className="level-strip__row" data-tauri-drag-region>
+        <header className="level-strip">
+          <div className="level-strip__row">
             <span className="level-strip__level">Lv.{level.level}</span>
             <span className="level-strip__exp">
               {level.currentLevelExperience} / {level.requiredForNextLevel} EXP
@@ -340,9 +354,11 @@ export function App() {
 
             <footer className="widget-footer">
               <span>{expanded ? 'Heatmap rebuilt from saved EXP history.' : 'Every saved EXP event leaves a mark.'}</span>
-              <button className="expand-button" type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} onClick={() => void toggleExpanded()}>
-                {expanded ? '−' : '+'}
-              </button>
+              {!expanded ? (
+                <button className="expand-button" type="button" aria-label="Expand Dayforge" onClick={() => void toggleExpanded()}>
+                  +
+                </button>
+              ) : null}
             </footer>
           </section>
 
