@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { getDatabase } from '../../db/database';
+import { getDatabase, runDatabaseWrite } from '../../db/database';
 
 export type ExperienceSource = 'TODO' | 'HABIT' | 'TIMER' | 'DAILY_LOGIN' | 'ONLINE';
 
@@ -16,23 +16,24 @@ export async function grantExperience(input: GrantExperienceInput): Promise<void
     throw new Error('Experience amount must be a positive number.');
   }
 
-  const db = await getDatabase();
   const occurredAt = input.occurredAt ?? new Date();
 
-  await db.execute(
-    `INSERT INTO experience_logs
-      (id, source_type, source_id, description, amount, occurred_at, date_key)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [
-      crypto.randomUUID(),
-      input.source,
-      input.sourceId ?? null,
-      input.description,
-      Math.floor(input.amount),
-      occurredAt.toISOString(),
-      format(occurredAt, 'yyyy-MM-dd'),
-    ],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO experience_logs
+        (id, source_type, source_id, description, amount, occurred_at, date_key)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        crypto.randomUUID(),
+        input.source,
+        input.sourceId ?? null,
+        input.description,
+        Math.floor(input.amount),
+        occurredAt.toISOString(),
+        format(occurredAt, 'yyyy-MM-dd'),
+      ],
+    );
+  });
 }
 
 export async function getTotalExperience(): Promise<number> {
