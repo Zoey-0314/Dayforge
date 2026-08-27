@@ -12,6 +12,11 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 fn database_migrations() -> Vec<Migration> {
     vec![Migration {
         version: 1,
@@ -113,7 +118,11 @@ pub fn run() {
         .build();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
         .plugin(sql_plugin)
+        .invoke_handler(tauri::generate_handler![quit_app])
         .setup(|app| {
             #[cfg(desktop)]
             {
@@ -121,13 +130,6 @@ pub fn run() {
                     tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                     None,
                 ))?;
-
-                if let Some(window) = app.get_webview_window("main") {
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window_vibrancy::apply_acrylic(&window, Some((18, 30, 48, 52)));
-                    }
-                }
 
                 let show_item = MenuItem::with_id(app, "show", "Show Dayforge", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Quit Dayforge", true, None::<&str>)?;
@@ -161,16 +163,6 @@ pub fn run() {
             }
 
             Ok(())
-        })
-        .on_window_event(|window, event| {
-            if window.label() != "main" {
-                return;
-            }
-
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
-            }
         })
         .run(tauri::generate_context!())
         .expect("error while running Dayforge");
