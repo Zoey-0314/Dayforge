@@ -1,7 +1,8 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Maximize2, Minus, Shrink, X } from 'lucide-react';
 import { getDailyExperienceTotals, getDatabase } from '../db/database';
 import { type Difficulty } from '../domain/difficulty';
 import { grantDailyLoginIfEligible } from '../features/experience/dailyLoginService';
@@ -27,7 +28,7 @@ import {
 import { completeTodo, createTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
 
 const COMPACT_SIZE = { width: 320, height: 320 };
-const EXPANDED_SIZE = { width: 1080, height: 720 };
+const EXPANDED_SIZE = { width: 980, height: 680 };
 
 export function App() {
   const [mode, setMode] = useState<HeatmapMode>('month');
@@ -93,8 +94,9 @@ export function App() {
         if (loginReward > 0) setToast(`Daily login +${loginReward} EXP`);
       } catch (cause) {
         if (cancelled) return;
+        console.error('Dayforge database boot failed', cause);
         setReady(true);
-        setError(cause instanceof Error ? cause.message : 'Unable to open the local Dayforge database.');
+        setError(cause instanceof Error ? cause.message : String(cause || 'Unable to open the local Dayforge database.'));
       }
     }
 
@@ -155,8 +157,25 @@ export function App() {
     }
   }
 
+  async function minimizeWindow() {
+    try {
+      await getCurrentWindow().minimize();
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not minimize Dayforge.');
+    }
+  }
+
+  async function closeWindow() {
+    try {
+      await getCurrentWindow().close();
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not close Dayforge.');
+    }
+  }
+
   async function submitTodo(event: FormEvent) {
     event.preventDefault();
+    if (!todoTitle.trim()) return;
     try {
       await createTodo({ title: todoTitle, taskType: todoType, difficulty: todoDifficulty });
       setTodoTitle('');
@@ -178,6 +197,7 @@ export function App() {
 
   async function submitHabit(event: FormEvent) {
     event.preventDefault();
+    if (!habitTitle.trim()) return;
     try {
       await createHabit({ title: habitTitle, difficulty: habitDifficulty, rewardCapPerDay: 8 });
       setHabitTitle('');
@@ -253,8 +273,26 @@ export function App() {
   return (
     <main className={`widget-shell ${expanded ? 'widget-shell--expanded' : ''}`}>
       <section className={`glass-card widget-card ${expanded ? 'widget-card--expanded' : ''}`}>
+        <div className="window-chrome" data-tauri-drag-region>
+          <div className="window-chrome__brand" data-tauri-drag-region>
+            <span className="window-chrome__mark" aria-hidden="true">D</span>
+            <span data-tauri-drag-region>Dayforge</span>
+          </div>
+          <div className="window-chrome__actions">
+            <button type="button" aria-label="Minimize Dayforge" title="Minimize" onClick={() => void minimizeWindow()}>
+              <Minus size={14} strokeWidth={1.8} />
+            </button>
+            <button type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} title={expanded ? 'Collapse' : 'Expand'} onClick={() => void toggleExpanded()}>
+              {expanded ? <Shrink size={13} strokeWidth={1.8} /> : <Maximize2 size={13} strokeWidth={1.8} />}
+            </button>
+            <button className="window-chrome__close" type="button" aria-label="Close Dayforge" title="Hide to tray" onClick={() => void closeWindow()}>
+              <X size={14} strokeWidth={1.8} />
+            </button>
+          </div>
+        </div>
+
         <header className="level-strip" data-tauri-drag-region>
-          <div className="level-strip__row">
+          <div className="level-strip__row" data-tauri-drag-region>
             <span className="level-strip__level">Lv.{level.level}</span>
             <span className="level-strip__exp">
               {level.currentLevelExperience} / {level.requiredForNextLevel} EXP
@@ -280,7 +318,7 @@ export function App() {
 
             <div className="heatmap-wrap">
               {!ready ? <div className="status-message">Opening your local history…</div> : null}
-              {error ? <div className="status-message status-message--error">{error}</div> : null}
+              {error ? <div className="status-message status-message--error">Database unavailable: {error}</div> : null}
               {ready && !error ? <Heatmap mode={mode} data={heatmapData} /> : null}
             </div>
 
