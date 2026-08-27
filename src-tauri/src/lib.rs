@@ -27,13 +27,12 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
         ) -> i32;
     }
 
-    // Windows 11 draws an accent-colored DWM frame around some undecorated
-    // windows even when Tauri decorations and shadows are disabled. Asking DWM
-    // for no border removes that extra outer ring. The calls safely no-op on
-    // older Windows versions that do not support these attributes.
+    // Let the transparent WebView stay rectangular and let CSS own the only
+    // visible rounded mask. A second DWM rounding radius creates tiny corner
+    // seams because Windows' system radius cannot exactly match our 25px glass.
     const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
     const DWMWA_BORDER_COLOR: i32 = 34;
-    const DWMWCP_ROUND: u32 = 2;
+    const DWMWCP_DONOTROUND: u32 = 1;
     const DWMWA_COLOR_NONE: u32 = 0xFFFF_FFFE;
 
     if let Ok(hwnd) = window.hwnd() {
@@ -48,7 +47,7 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
             let _ = DwmSetWindowAttribute(
                 raw_hwnd,
                 DWMWA_WINDOW_CORNER_PREFERENCE,
-                &DWMWCP_ROUND as *const u32 as *const c_void,
+                &DWMWCP_DONOTROUND as *const u32 as *const c_void,
                 size_of::<u32>() as u32,
             );
         }
@@ -199,8 +198,6 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
-                // Dayforge no longer stays resident in the system tray. Closing
-                // the main window means closing the application.
                 window.app_handle().exit(0);
             }
         })

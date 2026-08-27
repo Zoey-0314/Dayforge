@@ -1,0 +1,433 @@
+/* Neutral vision-style glass theme. Loaded last so Dayforge can inherit the
+   user's wallpaper colors without pushing the whole UI toward blue. */
+
+:root {
+  --glass-text: rgba(255, 255, 255, 0.94);
+  --glass-muted: rgba(255, 255, 255, 0.58);
+  --glass-dim: rgba(255, 255, 255, 0.38);
+  --glass-line: rgba(255, 255, 255, 0.15);
+}
+
+html,
+body,
+#root,
+.widget-shell,
+.widget-shell--expanded {
+  background: transparent !important;
+}
+
+.widget-card,
+.widget-card--expanded {
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 25px !important;
+  clip-path: inset(0 round 25px) !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(115% 82% at 10% -7%, rgba(255, 255, 255, 0.18), transparent 43%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.075) 38%, rgba(18, 20, 24, 0.24) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(25px) saturate(108%) brightness(0.84) contrast(1.08) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(108%) brightness(0.84) contrast(1.08) !important;
+}
+
+.feature-panel,
+.expanded-grid .activity-panel {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  background:
+    radial-gradient(110% 65% at 8% -10%, rgba(255, 255, 255, 0.10), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035) 54%, rgba(0, 0, 0, 0.08)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025) !important;
+  backdrop-filter: blur(17px) saturate(104%) brightness(0.90) !important;
+  -webkit-backdrop-filter: blur(17px) saturate(104%) brightness(0.90) !important;
+}
+
+.widget-card::after {
+  background: radial-gradient(
+    74px circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.035) 34%,
+    transparent 70%
+  ) !important;
+}
+
+h1,
+h2,
+h3,
+.level-strip__level,
+.level-strip__exp,
+.window-chrome__brand,
+.timer-clock {
+  color: var(--glass-text) !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.42) !important;
+}
+
+.eyebrow,
+.panel-note,
+.widget-footer,
+.timer-status,
+.timer-rule,
+.empty-state,
+.status-message,
+.habit-row__main small,
+.habit-row__count small,
+.sleep-footer,
+.sleep-week-nav {
+  color: var(--glass-muted) !important;
+}
+
+.eyebrow {
+  letter-spacing: 0.19em;
+}
+
+.window-chrome__mark {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.window-chrome__actions {
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+
+.window-chrome__actions button,
+.window-chrome__actions .window-chrome__close {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.window-chrome__actions button:hover,
+.window-chrome__actions .window-chrome__close:hover {
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #fff !important;
+}
+
+.level-strip__track {
+  background: rgba(255, 255, 255, 0.09) !important;
+}
+
+.level-strip__fill {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.82), #fff) !important;
+  box-shadow: 0 0 11px rgba(255, 255, 255, 0.16) !important;
+}
+
+.segmented,
+.expand-button,
+.quick-form input,
+.quick-form select,
+.quick-form button,
+.timer-name-input,
+.timer-controls select,
+.timer-actions button,
+.sleep-form input,
+.sleep-form button,
+.sleep-week-nav button,
+.timer-history-toggle,
+.timer-history-close,
+.timer-history-icon,
+.timer-history-rename {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: rgba(255, 255, 255, 0.90) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.quick-form input,
+.timer-name-input,
+.timer-history-rename,
+.sleep-form input {
+  background: rgba(0, 0, 0, 0.09) !important;
+}
+
+.quick-form select,
+.timer-controls select {
+  background: rgba(20, 20, 22, 0.22) !important;
+}
+
+.quick-form input::placeholder,
+.timer-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.34) !important;
+}
+
+.timer-name-input:focus,
+.timer-history-rename:focus,
+.quick-form input:focus,
+.sleep-form input:focus {
+  border-color: rgba(255, 255, 255, 0.30) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 0 0 2px rgba(255, 255, 255, 0.055) !important;
+}
+
+.timer-actions button,
+.quick-form button,
+.sleep-form button {
+  background: rgba(255, 255, 255, 0.085) !important;
+}
+
+.timer-actions .ghost-button {
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.timer-history-toggle:hover,
+.timer-history-toggle.is-active {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.105) !important;
+}
+
+.timer-history-layer {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background:
+    radial-gradient(120% 72% at 12% -8%, rgba(255, 255, 255, 0.14), transparent 44%),
+    linear-gradient(145deg, rgba(47, 48, 52, 0.91), rgba(21, 22, 25, 0.90)) !important;
+  backdrop-filter: blur(24px) saturate(102%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(102%) !important;
+}
+
+.timer-history-row,
+.task-row,
+.habit-row {
+  border-color: rgba(255, 255, 255, 0.085) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.habit-row:hover,
+.task-row:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.075) !important;
+}
+
+.segmented button.is-active {
+  background: rgba(255, 255, 255, 0.13) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+.difficulty--easy,
+.difficulty--medium,
+.difficulty--hard {
+  background: rgba(255, 255, 255, 0.075) !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.heatmap__cell {
+  background: rgba(255, 255, 255, 0.055) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+}
+.heatmap__cell--1 { background: rgba(255, 255, 255, 0.20) !important; }
+.heatmap__cell--2 { background: rgba(255, 255, 255, 0.34) !important; }
+.heatmap__cell--3 { background: rgba(255, 255, 255, 0.48) !important; }
+.heatmap__cell--4 { background: rgba(255, 255, 255, 0.64) !important; }
+.heatmap__cell--5 { background: rgba(255, 255, 255, 0.82) !important; box-shadow: 0 0 8px rgba(255, 255, 255, 0.10) !important; }
+
+.sleep-span { stroke: rgba(255, 255, 255, 0.25) !important; }
+.sleep-point--bed { fill: rgba(255, 255, 255, 0.58) !important; }
+.sleep-point--wake { fill: rgba(255, 255, 255, 0.94) !important; }
+.sleep-trend--bed { stroke: rgba(255, 255, 255, 0.48) !important; }
+.sleep-trend--wake { stroke: rgba(255, 255, 255, 0.82) !important; }
+.sleep-key--bed { background: rgba(255, 255, 255, 0.58) !important; }
+.sleep-key--wake { background: rgba(255, 255, 255, 0.94) !important; }
+
+/* All buttons get restrained lift/compression plus a very fine illuminated edge. */
+button:not(:disabled) {
+  transition:
+    transform 150ms cubic-bezier(0.22, 0.82, 0.2, 1),
+    box-shadow 170ms ease,
+    border-color 170ms ease,
+    background-color 170ms ease,
+    color 170ms ease !important;
+  transform-origin: center;
+  will-change: transform;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.018);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 10px rgba(255, 255, 255, 0.055) !important;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0) scale(0.965);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 0 6px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* The card response is deliberately smaller than the native window resize.
+   The real smoothness comes from interpolating the window size itself. */
+.widget-card--motion-expand {
+  animation: neutral-card-expand 360ms cubic-bezier(0.22, 0.84, 0.2, 1) both !important;
+}
+.widget-card--motion-collapse {
+  animation: neutral-card-collapse 320ms cubic-bezier(0.22, 0.84, 0.2, 1) both !important;
+}
+
+@keyframes neutral-card-expand {
+  0% { opacity: 0.985; transform: scale(0.996); }
+  66% { opacity: 1; transform: scale(1.0025); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes neutral-card-collapse {
+  0% { opacity: 1; transform: scale(1); }
+  58% { opacity: 0.992; transform: scale(0.997); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Online gain ambience. This is intentionally a visual cadence only; the
+   actual ledger still follows Dayforge's verified +1 EXP / 5 min rule. */
+.online-exp-float {
+  position: absolute;
+  right: 7px;
+  bottom: 44px;
+  z-index: 1400;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.16), 0 1px 7px rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  animation: online-exp-rise 8.2s ease-out 2.6s infinite;
+}
+
+.widget-shell--expanded .online-exp-float {
+  right: 10px;
+  bottom: 54px;
+}
+
+@keyframes online-exp-rise {
+  0% { opacity: 0; transform: translate3d(0, 7px, 0) scale(0.96); }
+  7% { opacity: 0.82; }
+  24% { opacity: 0.68; transform: translate3d(-2px, -11px, 0) scale(1); }
+  34% { opacity: 0; transform: translate3d(-3px, -24px, 0) scale(0.99); }
+  100% { opacity: 0; transform: translate3d(-3px, -24px, 0) scale(0.99); }
+}
+
+.level-up-celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.level-up-glow {
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08) 32%, transparent 68%);
+  filter: blur(2px);
+  animation: level-glow 1.45s cubic-bezier(0.22, 0.82, 0.2, 1) both;
+}
+
+.level-up-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.075);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.22), 0 1px 8px rgba(0, 0, 0, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 28px rgba(255, 255, 255, 0.08);
+  animation: level-copy 1.45s cubic-bezier(0.22, 0.82, 0.2, 1) both;
+}
+
+.level-up-copy span {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  opacity: 0.72;
+}
+.level-up-copy strong { font-size: 20px; }
+
+.level-up-particles {
+  position: absolute;
+  inset: 0;
+}
+
+.level-up-particles i {
+  --px: 0px;
+  --py: -78px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.38);
+  opacity: 0;
+  animation: level-particle 1.12s cubic-bezier(0.12, 0.68, 0.18, 1) both;
+}
+
+.level-up-particles i:nth-child(1) { --px: 0px; --py: -92px; }
+.level-up-particles i:nth-child(2) { --px: 35px; --py: -82px; animation-delay: 25ms; }
+.level-up-particles i:nth-child(3) { --px: 66px; --py: -65px; animation-delay: 55ms; }
+.level-up-particles i:nth-child(4) { --px: 88px; --py: -30px; animation-delay: 15ms; }
+.level-up-particles i:nth-child(5) { --px: 94px; --py: 6px; animation-delay: 65ms; }
+.level-up-particles i:nth-child(6) { --px: 78px; --py: 47px; animation-delay: 35ms; }
+.level-up-particles i:nth-child(7) { --px: 52px; --py: 78px; animation-delay: 85ms; }
+.level-up-particles i:nth-child(8) { --px: 8px; --py: 91px; animation-delay: 45ms; }
+.level-up-particles i:nth-child(9) { --px: -34px; --py: 82px; animation-delay: 70ms; }
+.level-up-particles i:nth-child(10) { --px: -68px; --py: 61px; animation-delay: 20ms; }
+.level-up-particles i:nth-child(11) { --px: -90px; --py: 27px; animation-delay: 90ms; }
+.level-up-particles i:nth-child(12) { --px: -94px; --py: -10px; animation-delay: 40ms; }
+.level-up-particles i:nth-child(13) { --px: -77px; --py: -51px; animation-delay: 75ms; }
+.level-up-particles i:nth-child(14) { --px: -46px; --py: -79px; animation-delay: 30ms; }
+.level-up-particles i:nth-child(15) { --px: 24px; --py: -68px; animation-delay: 100ms; }
+.level-up-particles i:nth-child(16) { --px: -21px; --py: 64px; animation-delay: 60ms; }
+
+@keyframes level-glow {
+  0% { opacity: 0; transform: scale(0.62); }
+  24% { opacity: 1; transform: scale(1.03); }
+  68% { opacity: 0.72; transform: scale(1.16); }
+  100% { opacity: 0; transform: scale(1.34); }
+}
+
+@keyframes level-copy {
+  0% { opacity: 0; transform: scale(0.88) translateY(5px); }
+  24% { opacity: 1; transform: scale(1.035) translateY(0); }
+  44% { transform: scale(0.995); }
+  76% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1) translateY(-3px); }
+}
+
+@keyframes level-particle {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.3); }
+  16% { opacity: 1; }
+  70% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate3d(var(--px), var(--py), 0) scale(0.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled),
+  .widget-card--motion-expand,
+  .widget-card--motion-collapse,
+  .online-exp-float,
+  .level-up-glow,
+  .level-up-copy,
+  .level-up-particles i {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .online-exp-float,
+  .level-up-celebration {
+    display: none !important;
+  }
+}

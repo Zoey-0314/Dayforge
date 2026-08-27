@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns';
 import { invoke } from '@tauri-apps/api/core';
-import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Check, Clock3, Maximize2, Minus, Pencil, Shrink, X } from 'lucide-react';
 import { getDailyExperienceTotals, getDatabase } from '../db/database';
 import { type Difficulty } from '../domain/difficulty';
 import { grantDailyLoginIfEligible } from '../features/experience/dailyLoginService';
+import { ExperienceEffects } from '../features/experience/ExperienceEffects';
 import { getLevelProgress, getTotalExperience } from '../features/experience/experienceService';
 import {
   grantOnlineExperienceForVerifiedSeconds,
@@ -29,9 +29,7 @@ import {
   type TimerSession,
 } from '../features/timer/timerService';
 import { completeTodo, createTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
-
-const COMPACT_SIZE = { width: 320, height: 320 };
-const EXPANDED_SIZE = { width: 980, height: 680 };
+import { animateDayforgeWindowResize } from '../services/windowMotion';
 
 type ResizeMotion = 'expand' | 'collapse' | null;
 
@@ -62,7 +60,9 @@ export function App() {
   const [timerHistoryOpen, setTimerHistoryOpen] = useState(false);
   const [editingTimerId, setEditingTimerId] = useState<string | null>(null);
   const [editingTimerTitle, setEditingTimerTitle] = useState('');
+
   const onlineVerifiedSeconds = useRef(0);
+  const resizeInFlight = useRef(false);
 
   const level = useMemo(() => getLevelProgress(totalExperience), [totalExperience]);
 
@@ -84,8 +84,7 @@ export function App() {
   }, []);
 
   const refreshTimerHistory = useCallback(async () => {
-    const sessions = await listRecentTimerSessions(100);
-    setTimerHistory(sessions);
+    setTimerHistory(await listRecentTimerSessions(100));
   }, []);
 
   useEffect(() => {
@@ -152,33 +151,38 @@ export function App() {
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       onlineVerifiedSeconds.current += 60;
-      if (onlineVerifiedSeconds.current >= ONLINE_RULES.unitSeconds) {
-        const verified = onlineVerifiedSeconds.current;
-        onlineVerifiedSeconds.current = 0;
-        void grantOnlineExperienceForVerifiedSeconds(verified).then(async (result) => {
-          if (result.awarded > 0) {
-            setToast(`Online +${result.awarded} EXP`);
-            await refreshForMode(mode);
-          }
-        }).catch((cause) => console.error('Online EXP write failed', cause));
-      }
+      if (onlineVerifiedSeconds.current < ONLINE_RULES.unitSeconds) return;
+
+      const verified = onlineVerifiedSeconds.current;
+      onlineVerifiedSeconds.current = 0;
+      void grantOnlineExperienceForVerifiedSeconds(verified).then(async (result) => {
+        if (result.awarded > 0) {
+          setToast(`Online +${result.awarded} EXP`);
+          await refreshForMode(mode);
+        }
+      }).catch((cause) => console.error('Online EXP write failed', cause));
     }, 60_000);
+
     return () => window.clearInterval(heartbeat);
   }, [mode, refreshForMode]);
 
   async function toggleExpanded() {
+    if (resizeInFlight.current) return;
+    const next = !expanded;
+    resizeInFlight.current = true;
+    setResizeMotion(next ? 'expand' : 'collapse');
+    if (!next) setTimerHistoryOpen(false);
+    if (next) setExpanded(true);
+
     try {
-      const next = !expanded;
-      const size = next ? EXPANDED_SIZE : COMPACT_SIZE;
-      setResizeMotion(next ? 'expand' : 'collapse');
-      if (!next) setTimerHistoryOpen(false);
-      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-      await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
-      setExpanded(next);
-      window.setTimeout(() => setResizeMotion(null), 430);
+      await animateDayforgeWindowResize(next);
+      if (!next) setExpanded(false);
     } catch (cause) {
-      setResizeMotion(null);
+      if (next) setExpanded(false);
       setToast(cause instanceof Error ? cause.message : 'Could not resize Dayforge.');
+    } finally {
+      window.setTimeout(() => setResizeMotion(null), 110);
+      resizeInFlight.current = false;
     }
   }
 
@@ -315,7 +319,11 @@ export function App() {
   const resizeClass = resizeMotion ? `widget-card--motion-${resizeMotion}` : '';
 
   return (
-    <main className={`widget-shell ${expanded ? 'widget-shell--expanded' : ''}`} onPointerMove={updatePointerHighlight} onPointerLeave={hidePointerHighlight}>
+    <main
+      className={`widget-shell ${expanded ? 'widget-shell--expanded' : ''}`}
+      onPointerMove={updatePointerHighlight}
+      onPointerLeave={hidePointerHighlight}
+    >
       <section className={`glass-card widget-card ${expanded ? 'widget-card--expanded' : ''} ${resizeClass}`}>
         <div className="window-chrome">
           <div className="window-chrome__brand" data-tauri-drag-region>
@@ -324,9 +332,15 @@ export function App() {
           </div>
           <div className="window-chrome__drag-spacer" data-tauri-drag-region aria-hidden="true" />
           <div className="window-chrome__actions">
-            <button type="button" aria-label="Minimize Dayforge" title="Minimize" onClick={() => void minimizeWindow()}><Minus size={14} strokeWidth={1.8} /></button>
-            <button type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} title={expanded ? 'Collapse' : 'Expand'} onClick={() => void toggleExpanded()}>{expanded ? <Shrink size={13} strokeWidth={1.8} /> : <Maximize2 size={13} strokeWidth={1.8} />}</button>
-            <button className="window-chrome__close" type="button" aria-label="Quit Dayforge" title="Quit Dayforge" onClick={() => void closeWindow()}><X size={14} strokeWidth={1.8} /></button>
+            <button type="button" aria-label="Minimize Dayforge" title="Minimize" onClick={() => void minimizeWindow()}>
+              <Minus size={14} strokeWidth={1.8} />
+            </button>
+            <button type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} title={expanded ? 'Collapse' : 'Expand'} onClick={() => void toggleExpanded()}>
+              {expanded ? <Shrink size={13} strokeWidth={1.8} /> : <Maximize2 size={13} strokeWidth={1.8} />}
+            </button>
+            <button className="window-chrome__close" type="button" aria-label="Quit Dayforge" title="Quit Dayforge" onClick={() => void closeWindow()}>
+              <X size={14} strokeWidth={1.8} />
+            </button>
           </div>
         </div>
 
@@ -335,7 +349,9 @@ export function App() {
             <span className="level-strip__level">Lv.{level.level}</span>
             <span className="level-strip__exp">{level.currentLevelExperience} / {level.requiredForNextLevel} EXP</span>
           </div>
-          <div className="level-strip__track" aria-label="Level progress"><div className="level-strip__fill" style={{ width: `${Math.min(level.progress * 100, 100)}%` }} /></div>
+          <div className="level-strip__track" aria-label="Level progress">
+            <div className="level-strip__fill" style={{ width: `${Math.min(level.progress * 100, 100)}%` }} />
+          </div>
         </header>
 
         <div className={expanded ? 'expanded-grid' : 'compact-layout'}>
@@ -347,96 +363,173 @@ export function App() {
                 <button className={mode === 'year' ? 'is-active' : ''} onClick={() => setMode('year')}>Year</button>
               </div>
             </div>
+
             <div className="heatmap-wrap">
               {!ready ? <div className="status-message">Opening your local history…</div> : null}
               {error ? <div className="status-message status-message--error">Database unavailable: {error}</div> : null}
               {ready && !error ? <Heatmap mode={mode} data={heatmapData} /> : null}
             </div>
+
             <footer className="widget-footer">
               <span>{expanded ? 'Heatmap rebuilt from saved EXP history.' : 'Every saved EXP event leaves a mark.'}</span>
               {!expanded ? <button className="expand-button" type="button" aria-label="Expand Dayforge" onClick={() => void toggleExpanded()}>+</button> : null}
             </footer>
           </section>
 
-          {expanded ? <>
-            <section className="feature-panel todo-panel">
-              <div className="panel-heading"><div><p className="eyebrow">TASKS</p><h2>To-do</h2></div><span className="panel-note">Saved locally</span></div>
-              <form className="quick-form" onSubmit={submitTodo}>
-                <input value={todoTitle} onChange={(event) => setTodoTitle(event.target.value)} placeholder="Add a task…" />
-                <select value={todoType} onChange={(event) => setTodoType(event.target.value as TaskType)}><option value="daily">Daily</option><option value="persistent">Persistent</option></select>
-                <select value={todoDifficulty} onChange={(event) => setTodoDifficulty(event.target.value as Difficulty)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
-                <button type="submit">Add</button>
-              </form>
-              <TaskSection title="Daily · refreshes each date" tasks={dailyTodos} onComplete={finishTodo} />
-              <TaskSection title="Persistent · stays until done" tasks={persistentTodos} onComplete={finishTodo} />
-            </section>
-
-            <section className="feature-panel timer-panel">
-              <div className="panel-heading timer-panel-heading">
-                <div><p className="eyebrow">FOCUS</p><h2>Timer</h2></div>
-                <button className={`timer-history-toggle ${timerHistoryOpen ? 'is-active' : ''}`} type="button" onClick={() => void toggleTimerHistory()}><Clock3 size={12} strokeWidth={1.8} /><span>History</span></button>
-              </div>
-              <div className="timer-controls">
-                <input className="timer-name-input" value={timerName} disabled={Boolean(timerSession)} maxLength={80} onChange={(event) => setTimerName(event.target.value)} placeholder={`${timerCategory} session`} aria-label="Timer name" />
-                <select value={timerCategory} disabled={Boolean(timerSession)} onChange={(event) => setTimerCategory(event.target.value as TimerCategory)}><option>Studying</option><option>Working</option><option>Exercise</option><option>Custom</option></select>
-                <select value={timerDifficulty} disabled={Boolean(timerSession)} onChange={(event) => setTimerDifficulty(event.target.value as Difficulty)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
-              </div>
-              <div className="timer-clock">{formatElapsed(timerElapsed)}</div>
-              <p className="timer-status">{timerSession ? `${timerSession.title} · ${timerSession.category} · ${timerSession.status}` : 'Name the session if you want, then start.'}</p>
-              <div className="timer-actions">
-                {!timerSession ? <button onClick={() => void handleTimerStart()}>Start</button> : null}
-                {timerSession ? <button onClick={() => void handleTimerPauseResume()}>{timerSession.status === 'running' ? 'Pause' : 'Resume'}</button> : null}
-                {timerSession ? <button onClick={() => void handleTimerComplete()}>Complete</button> : null}
-                {timerSession ? <button className="ghost-button" onClick={() => void handleTimerCancel()}>Cancel</button> : null}
-              </div>
-              <p className="timer-rule">Timer EXP uses complete 5-minute blocks · Online +1 EXP / 5 min · cap {ONLINE_RULES.dailyCap}/day.</p>
-
-              {timerHistoryOpen ? <div className="timer-history-layer" role="dialog" aria-label="Timer history">
-                <div className="timer-history-header">
-                  <div><p className="eyebrow">SAVED SESSIONS</p><strong>Timer history</strong></div>
-                  <button type="button" className="timer-history-close" onClick={() => setTimerHistoryOpen(false)} aria-label="Close timer history"><X size={13} strokeWidth={1.8} /></button>
+          {expanded ? (
+            <>
+              <section className="feature-panel todo-panel">
+                <div className="panel-heading">
+                  <div><p className="eyebrow">TASKS</p><h2>To-do</h2></div>
+                  <span className="panel-note">Saved locally</span>
                 </div>
-                <div className="timer-history-list">
-                  {timerHistory.length === 0 ? <EmptyState text="No completed sessions yet." /> : timerHistory.map((session) => <article className="timer-history-row" key={session.id}>
-                    <div className="timer-history-row__main">
-                      {editingTimerId === session.id ? <input className="timer-history-rename" value={editingTimerTitle} maxLength={80} autoFocus onChange={(event) => setEditingTimerTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void saveTimerRename(session.id); if (event.key === 'Escape') setEditingTimerId(null); }} /> : <strong title={session.title}>{session.title}</strong>}
-                      <small>{formatTimerHistoryDate(session)} · {session.category} · {session.difficulty}</small>
+                <form className="quick-form" onSubmit={submitTodo}>
+                  <input value={todoTitle} onChange={(event) => setTodoTitle(event.target.value)} placeholder="Add a task…" />
+                  <select value={todoType} onChange={(event) => setTodoType(event.target.value as TaskType)}>
+                    <option value="daily">Daily</option>
+                    <option value="persistent">Persistent</option>
+                  </select>
+                  <select value={todoDifficulty} onChange={(event) => setTodoDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <button type="submit">Add</button>
+                </form>
+                <TaskSection title="Daily · refreshes each date" tasks={dailyTodos} onComplete={finishTodo} />
+                <TaskSection title="Persistent · stays until done" tasks={persistentTodos} onComplete={finishTodo} />
+              </section>
+
+              <section className="feature-panel timer-panel">
+                <div className="panel-heading timer-panel-heading">
+                  <div><p className="eyebrow">FOCUS</p><h2>Timer</h2></div>
+                  <button className={`timer-history-toggle ${timerHistoryOpen ? 'is-active' : ''}`} type="button" onClick={() => void toggleTimerHistory()}>
+                    <Clock3 size={12} strokeWidth={1.8} /><span>History</span>
+                  </button>
+                </div>
+
+                <div className="timer-controls">
+                  <input className="timer-name-input" value={timerName} disabled={Boolean(timerSession)} maxLength={80} onChange={(event) => setTimerName(event.target.value)} placeholder={`${timerCategory} session`} aria-label="Timer name" />
+                  <select value={timerCategory} disabled={Boolean(timerSession)} onChange={(event) => setTimerCategory(event.target.value as TimerCategory)}>
+                    <option>Studying</option><option>Working</option><option>Exercise</option><option>Custom</option>
+                  </select>
+                  <select value={timerDifficulty} disabled={Boolean(timerSession)} onChange={(event) => setTimerDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                  </select>
+                </div>
+
+                <div className="timer-clock">{formatElapsed(timerElapsed)}</div>
+                <p className="timer-status">
+                  {timerSession ? `${timerSession.title} · ${timerSession.category} · ${timerSession.status}` : 'Name the session if you want, then start.'}
+                </p>
+                <div className="timer-actions">
+                  {!timerSession ? <button onClick={() => void handleTimerStart()}>Start</button> : null}
+                  {timerSession ? <button onClick={() => void handleTimerPauseResume()}>{timerSession.status === 'running' ? 'Pause' : 'Resume'}</button> : null}
+                  {timerSession ? <button onClick={() => void handleTimerComplete()}>Complete</button> : null}
+                  {timerSession ? <button className="ghost-button" onClick={() => void handleTimerCancel()}>Cancel</button> : null}
+                </div>
+                <p className="timer-rule">Timer EXP uses complete 5-minute blocks · Online +1 EXP / 5 min · cap {ONLINE_RULES.dailyCap}/day.</p>
+
+                {timerHistoryOpen ? (
+                  <div className="timer-history-layer" role="dialog" aria-label="Timer history">
+                    <div className="timer-history-header">
+                      <div><p className="eyebrow">SAVED SESSIONS</p><strong>Timer history</strong></div>
+                      <button type="button" className="timer-history-close" onClick={() => setTimerHistoryOpen(false)} aria-label="Close timer history">
+                        <X size={13} strokeWidth={1.8} />
+                      </button>
                     </div>
-                    <div className="timer-history-row__meta"><span>{formatElapsed(session.elapsedSeconds)}</span><small>{session.status === 'completed' ? `+${session.expAwarded} EXP` : 'cancelled'}</small></div>
-                    {editingTimerId === session.id ? <button type="button" className="timer-history-icon" aria-label="Save timer name" onClick={() => void saveTimerRename(session.id)}><Check size={12} strokeWidth={2} /></button> : <button type="button" className="timer-history-icon" aria-label="Rename timer" onClick={() => beginTimerRename(session)}><Pencil size={11} strokeWidth={1.8} /></button>}
-                  </article>)}
+                    <div className="timer-history-list">
+                      {timerHistory.length === 0 ? <EmptyState text="No completed sessions yet." /> : timerHistory.map((session) => (
+                        <article className="timer-history-row" key={session.id}>
+                          <div className="timer-history-row__main">
+                            {editingTimerId === session.id ? (
+                              <input
+                                className="timer-history-rename"
+                                value={editingTimerTitle}
+                                maxLength={80}
+                                autoFocus
+                                onChange={(event) => setEditingTimerTitle(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') void saveTimerRename(session.id);
+                                  if (event.key === 'Escape') setEditingTimerId(null);
+                                }}
+                              />
+                            ) : <strong title={session.title}>{session.title}</strong>}
+                            <small>{formatTimerHistoryDate(session)} · {session.category} · {session.difficulty}</small>
+                          </div>
+                          <div className="timer-history-row__meta">
+                            <span>{formatElapsed(session.elapsedSeconds)}</span>
+                            <small>{session.status === 'completed' ? `+${session.expAwarded} EXP` : 'cancelled'}</small>
+                          </div>
+                          {editingTimerId === session.id ? (
+                            <button type="button" className="timer-history-icon" aria-label="Save timer name" onClick={() => void saveTimerRename(session.id)}><Check size={12} strokeWidth={2} /></button>
+                          ) : (
+                            <button type="button" className="timer-history-icon" aria-label="Rename timer" onClick={() => beginTimerRename(session)}><Pencil size={11} strokeWidth={1.8} /></button>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="feature-panel habit-panel">
+                <div className="panel-heading">
+                  <div><p className="eyebrow">REPEATABLE</p><h2>Habit Check-in</h2></div>
+                  <span className="panel-note">Tap again anytime</span>
                 </div>
-              </div> : null}
-            </section>
+                <form className="quick-form quick-form--habit" onSubmit={submitHabit}>
+                  <input value={habitTitle} onChange={(event) => setHabitTitle(event.target.value)} placeholder="Add a habit…" />
+                  <select value={habitDifficulty} onChange={(event) => setHabitDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                  </select>
+                  <button type="submit">Add</button>
+                </form>
+                <div className="habit-list">
+                  {habits.length === 0 ? <EmptyState text="No habits yet." /> : habits.map((habit) => (
+                    <button className="habit-row" key={habit.id} onClick={() => void checkHabit(habit.id)}>
+                      <span className="habit-row__main">
+                        <strong>{habit.title}</strong>
+                        <small>{habit.difficulty} · {habit.totalCount} total · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small>
+                      </span>
+                      <span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span>
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-            <section className="feature-panel habit-panel">
-              <div className="panel-heading"><div><p className="eyebrow">REPEATABLE</p><h2>Habit Check-in</h2></div><span className="panel-note">Tap again anytime</span></div>
-              <form className="quick-form quick-form--habit" onSubmit={submitHabit}>
-                <input value={habitTitle} onChange={(event) => setHabitTitle(event.target.value)} placeholder="Add a habit…" />
-                <select value={habitDifficulty} onChange={(event) => setHabitDifficulty(event.target.value as Difficulty)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
-                <button type="submit">Add</button>
-              </form>
-              <div className="habit-list">
-                {habits.length === 0 ? <EmptyState text="No habits yet." /> : habits.map((habit) => <button className="habit-row" key={habit.id} onClick={() => void checkHabit(habit.id)}><span className="habit-row__main"><strong>{habit.title}</strong><small>{habit.difficulty} · {habit.totalCount} total · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small></span><span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span></button>)}
-              </div>
-            </section>
-
-            <SleepPanel onMessage={setToast} />
-          </> : null}
+              <SleepPanel onMessage={setToast} />
+            </>
+          ) : null}
         </div>
       </section>
+
+      <ExperienceEffects level={level.level} enabled={ready && !error} />
       {toast ? <div className="toast">{toast}</div> : null}
     </main>
   );
 }
 
 function TaskSection({ title, tasks, onComplete }: { title: string; tasks: TodoItem[]; onComplete: (id: string) => Promise<void>; }) {
-  return <div className="task-section"><h3>{title}</h3><div className="task-list">
-    {tasks.length === 0 ? <EmptyState text="Nothing here yet." /> : tasks.map((task) => <button className={`task-row ${task.completed ? 'is-complete' : ''}`} key={task.id} disabled={task.completed} onClick={() => void onComplete(task.id)}><span className="task-checkbox">{task.completed ? '✓' : ''}</span><span className="task-row__title">{task.title}</span><span className={`difficulty difficulty--${task.difficulty}`}>{task.difficulty}</span></button>)}
-  </div></div>;
+  return (
+    <div className="task-section">
+      <h3>{title}</h3>
+      <div className="task-list">
+        {tasks.length === 0 ? <EmptyState text="Nothing here yet." /> : tasks.map((task) => (
+          <button className={`task-row ${task.completed ? 'is-complete' : ''}`} key={task.id} disabled={task.completed} onClick={() => void onComplete(task.id)}>
+            <span className="task-checkbox">{task.completed ? '✓' : ''}</span>
+            <span className="task-row__title">{task.title}</span>
+            <span className={`difficulty difficulty--${task.difficulty}`}>{task.difficulty}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-function EmptyState({ text }: { text: string }) { return <div className="empty-state">{text}</div>; }
+function EmptyState({ text }: { text: string }) {
+  return <div className="empty-state">{text}</div>;
+}
 
 function formatElapsed(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
