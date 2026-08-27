@@ -55,12 +55,27 @@ export async function restoreDesktopWindowState(): Promise<void> {
 
 export async function startWindowPositionPersistence(): Promise<() => void> {
   const window = getCurrentWindow();
-  return window.onMoved(({ payload }) => {
-    void setSetting(WINDOW_POSITION_KEY, {
-      x: payload.x,
-      y: payload.y,
-    } satisfies WindowPosition);
+  let saveTimer: number | null = null;
+  let latestPosition: WindowPosition | null = null;
+
+  const unlisten = await window.onMoved(({ payload }) => {
+    latestPosition = { x: payload.x, y: payload.y };
+
+    if (saveTimer !== null) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      saveTimer = null;
+      const position = latestPosition;
+      if (!position) return;
+      void setSetting(WINDOW_POSITION_KEY, position).catch((error) => {
+        console.error('Could not persist Dayforge window position:', error);
+      });
+    }, 300);
   });
+
+  return () => {
+    if (saveTimer !== null) window.clearTimeout(saveTimer);
+    unlisten();
+  };
 }
 
 export async function getAlwaysOnTopPreference(): Promise<boolean> {
