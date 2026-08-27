@@ -12,6 +12,7 @@ import {
 } from '../features/experience/onlineExperienceService';
 import { Heatmap, type HeatmapDatum, type HeatmapMode } from '../features/heatmap/Heatmap';
 import { checkInHabit, createHabit, listHabits, type HabitItem } from '../features/habits/habitService';
+import { SleepPanel } from '../features/sleep/SleepPanel';
 import {
   cancelTimer,
   checkpointTimer,
@@ -26,7 +27,7 @@ import {
 import { completeTodo, createTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
 
 const COMPACT_SIZE = { width: 320, height: 320 };
-const EXPANDED_SIZE = { width: 920, height: 680 };
+const EXPANDED_SIZE = { width: 1080, height: 720 };
 
 export function App() {
   const [mode, setMode] = useState<HeatmapMode>('month');
@@ -72,6 +73,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
+
     async function boot() {
       try {
         await getDatabase();
@@ -79,23 +81,23 @@ export function App() {
           grantDailyLoginIfEligible(),
           recoverTimerAfterLaunch(),
         ]);
-        if (!cancelled) {
-          if (recoveredTimer) {
-            setTimerSession(recoveredTimer);
-            setTimerElapsed(recoveredTimer.elapsedSeconds);
-          }
-          await refresh();
-          setReady(true);
-          setError(null);
-          if (loginReward > 0) setToast(`Daily login +${loginReward} EXP`);
+
+        if (cancelled) return;
+        if (recoveredTimer) {
+          setTimerSession(recoveredTimer);
+          setTimerElapsed(recoveredTimer.elapsedSeconds);
         }
+        await refresh();
+        setReady(true);
+        setError(null);
+        if (loginReward > 0) setToast(`Daily login +${loginReward} EXP`);
       } catch (cause) {
-        if (!cancelled) {
-          setReady(true);
-          setError(cause instanceof Error ? cause.message : 'Unable to open the local Dayforge database.');
-        }
+        if (cancelled) return;
+        setReady(true);
+        setError(cause instanceof Error ? cause.message : 'Unable to open the local Dayforge database.');
       }
     }
+
     void boot();
     return () => {
       cancelled = true;
@@ -104,7 +106,7 @@ export function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 2200);
+    const id = window.setTimeout(() => setToast(null), 2400);
     return () => window.clearTimeout(id);
   }, [toast]);
 
@@ -143,10 +145,14 @@ export function App() {
   }, [refresh]);
 
   async function toggleExpanded() {
-    const next = !expanded;
-    const size = next ? EXPANDED_SIZE : COMPACT_SIZE;
-    await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
-    setExpanded(next);
+    try {
+      const next = !expanded;
+      const size = next ? EXPANDED_SIZE : COMPACT_SIZE;
+      await getCurrentWindow().setSize(new LogicalSize(size.width, size.height));
+      setExpanded(next);
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not resize Dayforge.');
+    }
   }
 
   async function submitTodo(event: FormEvent) {
@@ -295,42 +301,21 @@ export function App() {
                 </div>
 
                 <form className="quick-form" onSubmit={submitTodo}>
-                  <input value={todoTitle} onChange={(e) => setTodoTitle(e.target.value)} placeholder="Add a task…" />
-                  <select value={todoType} onChange={(e) => setTodoType(e.target.value as TaskType)}>
-                    <option value="daily">Daily</option><option value="persistent">Persistent</option>
+                  <input value={todoTitle} onChange={(event) => setTodoTitle(event.target.value)} placeholder="Add a task…" />
+                  <select value={todoType} onChange={(event) => setTodoType(event.target.value as TaskType)}>
+                    <option value="daily">Daily</option>
+                    <option value="persistent">Persistent</option>
                   </select>
-                  <select value={todoDifficulty} onChange={(e) => setTodoDifficulty(e.target.value as Difficulty)}>
-                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                  <select value={todoDifficulty} onChange={(event) => setTodoDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
                   </select>
                   <button type="submit">Add</button>
                 </form>
 
                 <TaskSection title="Daily · refreshes each date" tasks={dailyTodos} onComplete={finishTodo} />
                 <TaskSection title="Persistent · stays until done" tasks={persistentTodos} onComplete={finishTodo} />
-              </section>
-
-              <section className="feature-panel habit-panel">
-                <div className="panel-heading">
-                  <div><p className="eyebrow">REPEATABLE</p><h2>Habit Check-in</h2></div>
-                  <span className="panel-note">Tap again anytime</span>
-                </div>
-
-                <form className="quick-form quick-form--habit" onSubmit={submitHabit}>
-                  <input value={habitTitle} onChange={(e) => setHabitTitle(e.target.value)} placeholder="Add a habit…" />
-                  <select value={habitDifficulty} onChange={(e) => setHabitDifficulty(e.target.value as Difficulty)}>
-                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
-                  </select>
-                  <button type="submit">Add</button>
-                </form>
-
-                <div className="habit-list">
-                  {habits.length === 0 ? <EmptyState text="No habits yet." /> : habits.map((habit) => (
-                    <button className="habit-row" key={habit.id} onClick={() => void checkHabit(habit.id)}>
-                      <span className="habit-row__main"><strong>{habit.title}</strong><small>{habit.difficulty} · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small></span>
-                      <span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span>
-                    </button>
-                  ))}
-                </div>
               </section>
 
               <section className="feature-panel timer-panel">
@@ -340,11 +325,16 @@ export function App() {
                 </div>
 
                 <div className="timer-controls">
-                  <select value={timerCategory} disabled={Boolean(timerSession)} onChange={(e) => setTimerCategory(e.target.value as TimerCategory)}>
-                    <option>Studying</option><option>Working</option><option>Exercise</option><option>Custom</option>
+                  <select value={timerCategory} disabled={Boolean(timerSession)} onChange={(event) => setTimerCategory(event.target.value as TimerCategory)}>
+                    <option>Studying</option>
+                    <option>Working</option>
+                    <option>Exercise</option>
+                    <option>Custom</option>
                   </select>
-                  <select value={timerDifficulty} disabled={Boolean(timerSession)} onChange={(e) => setTimerDifficulty(e.target.value as Difficulty)}>
-                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                  <select value={timerDifficulty} disabled={Boolean(timerSession)} onChange={(event) => setTimerDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
                   </select>
                 </div>
 
@@ -357,11 +347,42 @@ export function App() {
                   {!timerSession ? <button onClick={() => void handleTimerStart()}>Start</button> : null}
                   {timerSession ? <button onClick={() => void handleTimerPauseResume()}>{timerSession.status === 'running' ? 'Pause' : 'Resume'}</button> : null}
                   {timerSession ? <button onClick={() => void handleTimerComplete()}>Complete</button> : null}
-                  {timerSession ? <button className="secondary" onClick={() => void handleTimerCancel()}>Cancel</button> : null}
+                  {timerSession ? <button className="ghost-button" onClick={() => void handleTimerCancel()}>Cancel</button> : null}
                 </div>
 
-                <div className="timer-rule">EXP is granted per complete 5-minute block. Medium ×1.5, Hard ×2. A running timer is restored as paused after relaunch so closed/sleep time is never falsely rewarded.</div>
+                <p className="timer-rule">EXP is awarded per complete 5-minute block. Longer sessions and higher difficulty earn more.</p>
               </section>
+
+              <section className="feature-panel habit-panel">
+                <div className="panel-heading">
+                  <div><p className="eyebrow">REPEATABLE</p><h2>Habit Check-in</h2></div>
+                  <span className="panel-note">Tap again anytime</span>
+                </div>
+
+                <form className="quick-form quick-form--habit" onSubmit={submitHabit}>
+                  <input value={habitTitle} onChange={(event) => setHabitTitle(event.target.value)} placeholder="Add a habit…" />
+                  <select value={habitDifficulty} onChange={(event) => setHabitDifficulty(event.target.value as Difficulty)}>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <button type="submit">Add</button>
+                </form>
+
+                <div className="habit-list">
+                  {habits.length === 0 ? <EmptyState text="No habits yet." /> : habits.map((habit) => (
+                    <button className="habit-row" key={habit.id} onClick={() => void checkHabit(habit.id)}>
+                      <span className="habit-row__main">
+                        <strong>{habit.title}</strong>
+                        <small>{habit.difficulty} · {habit.totalCount} total · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small>
+                      </span>
+                      <span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <SleepPanel onMessage={setToast} />
             </>
           ) : null}
         </div>
@@ -371,13 +392,26 @@ export function App() {
   );
 }
 
-function TaskSection({ title, tasks, onComplete }: { title: string; tasks: TodoItem[]; onComplete: (id: string) => Promise<void> }) {
+function TaskSection({
+  title,
+  tasks,
+  onComplete,
+}: {
+  title: string;
+  tasks: TodoItem[];
+  onComplete: (id: string) => Promise<void>;
+}) {
   return (
     <div className="task-section">
       <h3>{title}</h3>
       <div className="task-list">
         {tasks.length === 0 ? <EmptyState text="Nothing here yet." /> : tasks.map((task) => (
-          <button className={`task-row ${task.completed ? 'is-complete' : ''}`} key={task.id} disabled={task.completed} onClick={() => void onComplete(task.id)}>
+          <button
+            className={`task-row ${task.completed ? 'is-complete' : ''}`}
+            key={task.id}
+            disabled={task.completed}
+            onClick={() => void onComplete(task.id)}
+          >
             <span className="task-checkbox">{task.completed ? '✓' : ''}</span>
             <span className="task-row__title">{task.title}</span>
             <span className={`difficulty difficulty--${task.difficulty}`}>{task.difficulty}</span>
