@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="64" x2="438" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#15347B"/>
+      <stop offset="0.48" stop-color="#1E7BD3"/>
+      <stop offset="1" stop-color="#4FA9EB"/>
+    </linearGradient>
+    <linearGradient id="forge" x1="155" y1="145" x2="356" y2="361" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D0EFF5"/>
+      <stop offset="1" stop-color="#A8D8F9"/>
+    </linearGradient>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#bg)"/>
+  <path d="M146 126h114c83 0 142 50 142 130s-59 130-142 130H146V126Zm110 205c48 0 82-27 82-75s-34-75-82-75h-47v150h47Z" fill="url(#forge)"/>
+  <g fill="#D0EFF5" opacity="0.96">
+    <rect x="111" y="102" width="32" height="32" rx="8"/>
+    <rect x="111" y="145" width="32" height="32" rx="8" opacity="0.82"/>
+    <rect x="111" y="188" width="32" height="32" rx="8" opacity="0.66"/>
+    <rect x="111" y="231" width="32" height="32" rx="8" opacity="0.5"/>
+    <rect x="111" y="274" width="32" height="32" rx="8" opacity="0.72"/>
+    <rect x="111" y="317" width="32" height="32" rx="8" opacity="0.88"/>
+  </g>
+  <path d="M354 92l13 28 29 13-29 13-13 29-13-29-28-13 28-13 13-28Z" fill="#D0EFF5"/>
+</svg>
