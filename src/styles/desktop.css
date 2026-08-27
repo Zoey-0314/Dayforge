@@ -1,0 +1,32 @@
+.desktop-quick-controls {
+  position: fixed;
+  top: 20px;
+  right: 28px;
+  z-index: 30;
+  display: flex;
+  gap: 7px;
+}
+
+.desktop-quick-controls button {
+  height: 26px;
+  border: 1px solid rgba(168, 216, 249, 0.14);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(5, 22, 45, 0.44);
+  color: rgba(208, 239, 245, 0.54);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-size: 9px;
+  letter-spacing: 0.01em;
+}
+
+.desktop-quick-controls button.is-active {
+  border-color: rgba(79, 169, 235, 0.28);
+  background: rgba(30, 123, 211, 0.16);
+  color: #d0eff5;
+}
+
+.desktop-quick-controls button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
