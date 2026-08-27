@@ -1,81 +1,266 @@
 .timer-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
 }
 
+.timer-panel-heading {
+  align-items: center;
+}
+
+.timer-history-toggle,
+.timer-history-close,
+.timer-history-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(168, 216, 249, 0.14);
+  background: rgba(6, 23, 42, 0.24);
+  color: rgba(231, 247, 255, 0.68);
+}
+
+.timer-history-toggle {
+  height: 27px;
+  gap: 5px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.timer-history-toggle:hover,
+.timer-history-toggle.is-active {
+  border-color: rgba(168, 216, 249, 0.24);
+  background: rgba(79, 169, 235, 0.15);
+  color: #eefaff;
+}
+
 .timer-controls {
   display: grid;
-  grid-template-columns: 1fr 110px;
-  gap: 8px;
-  margin-top: 14px;
+  grid-template-columns: 1fr 88px;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.timer-name-input {
+  grid-column: 1 / -1;
+  height: 29px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  padding: 0 9px;
+  outline: none;
+  background: rgba(6, 20, 38, 0.20);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #eefaff;
+  font-size: 9px;
+}
+
+.timer-name-input::placeholder {
+  color: rgba(231, 247, 255, 0.36);
+}
+
+.timer-name-input:focus,
+.timer-history-rename:focus {
+  border-color: rgba(116, 194, 243, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 2px rgba(79, 169, 235, 0.08);
 }
 
 .timer-controls select {
-  height: 32px;
+  height: 29px;
   border: 1px solid rgba(168, 216, 249, 0.14);
   border-radius: 10px;
   padding: 0 9px;
   outline: none;
-  background: rgba(4, 18, 39, 0.32);
+  background: rgba(4, 18, 39, 0.28);
   color: #eaf4ff;
-  font-size: 10px;
+  font-size: 9px;
 }
 
-.timer-controls select:disabled {
-  opacity: 0.55;
+.timer-controls select:disabled,
+.timer-name-input:disabled {
+  opacity: 0.56;
 }
 
 .timer-clock {
-  margin-top: 18px;
+  margin-top: 11px;
   text-align: center;
   color: #f5fbff;
-  font-size: 44px;
+  font-size: 34px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 22px rgba(79, 169, 235, 0.20);
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.34), 0 0 22px rgba(79, 169, 235, 0.16);
 }
 
 .timer-status {
-  margin: 10px 0 0;
+  min-height: 12px;
+  margin: 7px 0 0;
+  overflow: hidden;
   text-align: center;
-  color: rgba(208, 239, 245, 0.52);
-  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(231, 247, 255, 0.58);
+  font-size: 8px;
 }
 
 .timer-actions {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 6px;
+  margin-top: 9px;
 }
 
 .timer-actions button {
-  min-width: 74px;
-  height: 32px;
+  min-width: 66px;
+  height: 29px;
   border: 1px solid rgba(79, 169, 235, 0.22);
-  border-radius: 11px;
-  background: rgba(37, 93, 186, 0.36);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: rgba(37, 93, 186, 0.32);
   color: #d0eff5;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 
 .timer-actions button:hover {
-  background: rgba(30, 123, 211, 0.26);
+  background: rgba(30, 123, 211, 0.27);
 }
 
-.timer-actions button.secondary {
-  background: rgba(8, 27, 54, 0.34);
+.timer-actions .ghost-button {
+  background: rgba(8, 27, 54, 0.26);
   color: rgba(208, 239, 245, 0.66);
 }
 
 .timer-rule {
   margin-top: auto;
-  padding-top: 14px;
-  color: rgba(208, 239, 245, 0.42);
+  padding-top: 8px;
+  color: rgba(231, 247, 255, 0.42);
+  font-size: 7px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.timer-history-layer {
+  position: absolute;
+  inset: 44px 8px 8px;
+  z-index: 30;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 70% at 12% -8%, rgba(255, 255, 255, 0.13), transparent 44%),
+    linear-gradient(145deg, rgba(33, 49, 62, 0.92), rgba(15, 35, 53, 0.90));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 30px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(22px) saturate(124%);
+  -webkit-backdrop-filter: blur(22px) saturate(124%);
+  animation: timer-history-in 180ms cubic-bezier(0.22, 0.82, 0.2, 1) both;
+}
+
+@keyframes timer-history-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.992); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.timer-history-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.timer-history-header strong {
+  color: #f5fbff;
+  font-size: 12px;
+}
+
+.timer-history-close,
+.timer-history-icon {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.timer-history-close:hover,
+.timer-history-icon:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.timer-history-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.timer-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 26px;
+  align-items: center;
+  gap: 8px;
+  min-height: 45px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 11px;
+  background: rgba(5, 20, 37, 0.15);
+}
+
+.timer-history-row__main,
+.timer-history-row__meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timer-history-row__main strong {
+  overflow: hidden;
+  color: rgba(245, 251, 255, 0.90);
   font-size: 9px;
-  line-height: 1.55;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-history-row__main small,
+.timer-history-row__meta small {
+  color: rgba(231, 247, 255, 0.40);
+  font-size: 7px;
+}
+
+.timer-history-row__meta {
+  align-items: flex-end;
+  color: rgba(231, 247, 255, 0.76);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-history-rename {
+  width: 100%;
+  height: 25px;
+  border: 1px solid rgba(168, 216, 249, 0.20);
+  border-radius: 8px;
+  padding: 0 7px;
+  outline: none;
+  background: rgba(2, 14, 29, 0.26);
+  color: #f5fbff;
+  font-size: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-history-layer {
+    animation: none;
+  }
 }

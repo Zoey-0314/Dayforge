@@ -6,8 +6,9 @@ body,
   outline: 0 !important;
 }
 
-/* The glass surface now fills the complete native window. Leaving padding
-   around the card exposed the WebView/DWM frame as a visible rectangular ring. */
+/* The native WebView stays transparent, while the glass surface itself owns
+   the frost. Keeping the blur clipped to this surface prevents the old halo /
+   outer-frame look around rounded corners. */
 .widget-shell,
 .widget-shell--expanded {
   padding: 0 !important;
@@ -20,13 +21,20 @@ body,
 .widget-card,
 .widget-card--expanded {
   isolation: isolate;
+  overflow: hidden !important;
   border: 0 !important;
   outline: 0 !important;
   border-radius: 24px !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -1px 0 rgba(89, 154, 216, 0.04) !important;
   clip-path: inset(0 round 24px);
+  background:
+    radial-gradient(110% 80% at 12% -6%, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(145deg, rgba(61, 73, 82, 0.58), rgba(31, 49, 64, 0.52) 48%, rgba(17, 38, 59, 0.54)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset 0 -1px 0 rgba(89, 154, 216, 0.06) !important;
+  backdrop-filter: blur(23px) saturate(126%) brightness(0.92) contrast(1.04) !important;
+  -webkit-backdrop-filter: blur(23px) saturate(126%) brightness(0.92) contrast(1.04) !important;
 }
 
 .widget-card--expanded {
@@ -35,6 +43,24 @@ body,
   display: grid !important;
   grid-template-rows: 40px auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Nested surfaces stay airy, but add enough local frost that text remains
+   readable even when Dayforge sits over a bright wallpaper or browser. */
+.feature-panel,
+.expanded-grid .activity-panel {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(168, 216, 249, 0.055) 45%, rgba(7, 23, 40, 0.12)) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(15px) saturate(120%) brightness(0.96) !important;
+  -webkit-backdrop-filter: blur(15px) saturate(120%) brightness(0.96) !important;
+}
+
+h1,
+h2,
+.level-strip__level,
+.window-chrome__brand {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.34) !important;
 }
 
 /* The expanded layout owns a dedicated chrome row. Feature panels cannot enter
@@ -87,7 +113,7 @@ body,
   padding: 1px !important;
   border: 0 !important;
   border-radius: 9px !important;
-  background: rgba(8, 22, 40, 0.055) !important;
+  background: rgba(8, 22, 40, 0.12) !important;
   pointer-events: auto !important;
   isolation: isolate;
 }
@@ -120,27 +146,58 @@ body,
   min-height: 0;
 }
 
-/* The legacy expanded preference pills used the same top-right coordinates as
-   the custom window controls. Keep them disabled if an older cached module is
-   ever mounted. */
 .desktop-quick-controls {
   display: none !important;
 }
 
-/* Smaller, tighter pointer-following highlight. */
+/* Compact pointer highlight: a small reflection rather than a large spotlight. */
 .widget-card::after {
   pointer-events: none !important;
   background:
     radial-gradient(
-      86px circle at var(--pointer-x) var(--pointer-y),
-      rgba(255, 255, 255, 0.14),
-      rgba(168, 216, 249, 0.04) 34%,
+      78px circle at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.13),
+      rgba(168, 216, 249, 0.035) 34%,
       transparent 70%
     ) !important;
 }
 
 .widget-card::before {
   pointer-events: none !important;
+}
+
+/* Small spring response when switching between compact and expanded states.
+   The native window still resizes immediately; this provides the restrained
+   overshoot associated with Apple's compact UI motion without feeling bouncy. */
+.widget-card--motion-expand {
+  animation: dayforge-expand-spring 420ms cubic-bezier(0.22, 0.82, 0.2, 1) both;
+  transform-origin: center;
+}
+
+.widget-card--motion-collapse {
+  animation: dayforge-collapse-spring 400ms cubic-bezier(0.22, 0.82, 0.2, 1) both;
+  transform-origin: center;
+}
+
+@keyframes dayforge-expand-spring {
+  0% { transform: scale(0.997); }
+  58% { transform: scale(1.004); }
+  78% { transform: scale(0.999); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dayforge-collapse-spring {
+  0% { transform: scale(1.002); }
+  55% { transform: scale(0.997); }
+  78% { transform: scale(1.002); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .widget-card--motion-expand,
+  .widget-card--motion-collapse {
+    animation: none !important;
+  }
 }
 
 input,
