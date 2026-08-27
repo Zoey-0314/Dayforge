@@ -1,0 +1,228 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #eaf4ff;
+  background: transparent;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.widget-shell {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(79, 169, 235, 0.20), transparent 32%),
+    radial-gradient(circle at 82% 88%, rgba(21, 67, 172, 0.18), transparent 34%);
+}
+
+.glass-card {
+  border: 1px solid rgba(208, 239, 245, 0.28);
+  background: linear-gradient(145deg, rgba(15, 34, 65, 0.74), rgba(20, 48, 88, 0.58));
+  box-shadow:
+    0 22px 50px rgba(8, 20, 44, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+}
+
+.widget-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  padding: 16px;
+  user-select: none;
+}
+
+.level-strip {
+  padding: 2px 2px 12px;
+  cursor: grab;
+}
+
+.level-strip:active {
+  cursor: grabbing;
+}
+
+.level-strip__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.level-strip__level {
+  font-weight: 800;
+  color: #d0eff5;
+}
+
+.level-strip__exp {
+  color: rgba(208, 239, 245, 0.70);
+  font-variant-numeric: tabular-nums;
+}
+
+.level-strip__track {
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(168, 216, 249, 0.12);
+}
+
+.level-strip__fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #255dba, #4fa9eb, #a8d8f9);
+  transition: width 220ms ease;
+}
+
+.heatmap-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: #4fa9eb;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+}
+
+h1 {
+  margin: 0;
+  color: #f5fbff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid rgba(168, 216, 249, 0.14);
+  border-radius: 999px;
+  background: rgba(4, 18, 39, 0.30);
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: transparent;
+  color: rgba(208, 239, 245, 0.52);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.segmented button.is-active {
+  background: rgba(79, 169, 235, 0.19);
+  color: #d0eff5;
+  box-shadow: inset 0 0 0 1px rgba(79, 169, 235, 0.16);
+}
+
+.heatmap-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px 0 8px;
+}
+
+.heatmap {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  justify-content: center;
+}
+
+.heatmap--month {
+  grid-template-columns: repeat(7, 20px);
+}
+
+.heatmap--year {
+  grid-template-columns: repeat(19, 9px);
+  gap: 3px;
+}
+
+.heatmap__cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: rgba(208, 239, 245, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(208, 239, 245, 0.025);
+}
+
+.heatmap--year .heatmap__cell {
+  border-radius: 2.5px;
+}
+
+.heatmap__cell--1 { background: rgba(208, 239, 245, 0.44); }
+.heatmap__cell--2 { background: rgba(168, 216, 249, 0.62); }
+.heatmap__cell--3 { background: rgba(79, 169, 235, 0.78); }
+.heatmap__cell--4 { background: rgba(30, 123, 211, 0.92); }
+.heatmap__cell--5 { background: #1543ac; }
+
+.status-message {
+  color: rgba(208, 239, 245, 0.60);
+  font-size: 11px;
+}
+
+.status-message--error {
+  max-width: 220px;
+  text-align: center;
+  color: #ffd6df;
+}
+
+.widget-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  color: rgba(208, 239, 245, 0.44);
+  font-size: 9px;
+}
+
+.expand-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(79, 169, 235, 0.20);
+  border-radius: 50%;
+  background: rgba(79, 169, 235, 0.10);
+  color: #a8d8f9;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.expand-button:disabled {
+  opacity: 0.45;
+}
