@@ -24,6 +24,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Generate platform icons
+        run: npm run tauri icon src-tauri/icons/dayforge.svg
+
       - name: Build Dayforge installer
         run: npm run tauri build
 
