@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { getDatabase } from '../../db/database';
+import { getDatabase, runDatabaseWrite } from '../../db/database';
 import { getDifficultyExperience, type Difficulty } from '../../domain/difficulty';
 
 export type HabitItem = {
@@ -68,15 +68,16 @@ export async function createHabit(input: {
     throw new Error('Habit reward cap must be a positive integer or null.');
   }
 
-  const db = await getDatabase();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  await db.execute(
-    `INSERT INTO habits
-      (id, title, difficulty, reward_cap_per_day, is_active, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, 1, $5, $5)`,
-    [id, title, input.difficulty, cap, now],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO habits
+        (id, title, difficulty, reward_cap_per_day, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 1, $5, $5)`,
+      [id, title, input.difficulty, cap, now],
+    );
+  });
   return id;
 }
 
@@ -84,12 +85,10 @@ export async function checkInHabit(habitId: string, date = new Date()): Promise<
   rewarded: boolean;
   experience: number;
 }> {
-  const db = await getDatabase();
   const dateKey = todayKey(date);
   const now = date.toISOString();
 
-  await db.execute('BEGIN IMMEDIATE');
-  try {
+  return runDatabaseWrite(async (db) => {
     const rows = await db.select<Array<{
       title: string;
       difficulty: Difficulty;
@@ -132,19 +131,16 @@ export async function checkInHabit(habitId: string, date = new Date()): Promise<
       );
     }
 
-    await db.execute('COMMIT');
     return { rewarded, experience: reward };
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
-  }
+  });
 }
 
 export async function deleteHabit(habitId: string): Promise<void> {
-  const db = await getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
-    `UPDATE habits SET is_active = 0, updated_at = $1 WHERE id = $2`,
-    [now, habitId],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE habits SET is_active = 0, updated_at = $1 WHERE id = $2`,
+      [now, habitId],
+    );
+  });
 }
