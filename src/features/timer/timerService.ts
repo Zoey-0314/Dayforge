@@ -8,6 +8,7 @@ export type TimerStatus = 'running' | 'paused' | 'completed' | 'cancelled';
 
 export type TimerSession = {
   id: string;
+  title: string;
   category: TimerCategory;
   difficulty: Difficulty;
   startedAt: string;
@@ -19,6 +20,7 @@ export type TimerSession = {
 
 type TimerRow = {
   id: string;
+  title: string;
   category: TimerCategory;
   difficulty: Difficulty;
   started_at: string;
@@ -34,9 +36,15 @@ const MULTIPLIER: Record<Difficulty, number> = {
   hard: 2,
 };
 
+function normalizeTitle(value: string | undefined, category: TimerCategory): string {
+  const trimmed = value?.trim().replace(/\s+/g, ' ') ?? '';
+  return (trimmed || `${category} session`).slice(0, 80);
+}
+
 function mapRow(row: TimerRow): TimerSession {
   return {
     id: row.id,
+    title: row.title,
     category: row.category,
     difficulty: row.difficulty,
     startedAt: row.started_at,
@@ -55,7 +63,7 @@ export function calculateTimerExperience(elapsedSeconds: number, difficulty: Dif
 export async function getActiveTimer(): Promise<TimerSession | null> {
   const db = await getDatabase();
   const rows = await db.select<TimerRow[]>(
-    `SELECT id, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded
+    `SELECT id, title, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded
      FROM timer_sessions
      WHERE status IN ('running', 'paused')
      ORDER BY started_at DESC
@@ -81,24 +89,30 @@ export async function recoverTimerAfterLaunch(): Promise<TimerSession | null> {
   return session;
 }
 
-export async function startTimer(category: TimerCategory, difficulty: Difficulty): Promise<TimerSession> {
+export async function startTimer(
+  category: TimerCategory,
+  difficulty: Difficulty,
+  title?: string,
+): Promise<TimerSession> {
   const existing = await getActiveTimer();
   if (existing) throw new Error('Finish or cancel the current timer first.');
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const normalizedTitle = normalizeTitle(title, category);
 
   await runDatabaseWrite(async (db) => {
     await db.execute(
       `INSERT INTO timer_sessions
-        (id, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded)
-       VALUES ($1, $2, $3, $4, NULL, 0, 'running', 0)`,
-      [id, category, difficulty, now],
+        (id, title, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded)
+       VALUES ($1, $2, $3, $4, $5, NULL, 0, 'running', 0)`,
+      [id, normalizedTitle, category, difficulty, now],
     );
   });
 
   return {
     id,
+    title: normalizedTitle,
     category,
     difficulty,
     startedAt: now,
@@ -107,6 +121,21 @@ export async function startTimer(category: TimerCategory, difficulty: Difficulty
     status: 'running',
     expAwarded: 0,
   };
+}
+
+export async function renameTimerSession(id: string, title: string): Promise<string> {
+  const trimmed = title.trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (!trimmed) throw new Error('Timer name cannot be empty.');
+
+  await runDatabaseWrite(async (db) => {
+    const result = await db.execute(
+      `UPDATE timer_sessions SET title = $2 WHERE id = $1`,
+      [id, trimmed],
+    );
+    if (result.rowsAffected === 0) throw new Error('Timer session not found.');
+  });
+
+  return trimmed;
 }
 
 export async function checkpointTimer(id: string, elapsedSeconds: number): Promise<void> {
@@ -165,7 +194,7 @@ export async function completeTimer(session: TimerSession, elapsedSeconds: numbe
     await grantExperience({
       source: 'TIMER',
       sourceId: session.id,
-      description: `${session.category} focus session`,
+      description: `Focus session: ${session.title}`,
       amount: reward,
       occurredAt: endedAt,
     });
@@ -174,10 +203,10 @@ export async function completeTimer(session: TimerSession, elapsedSeconds: numbe
   return reward;
 }
 
-export async function listRecentTimerSessions(limit = 8): Promise<TimerSession[]> {
+export async function listRecentTimerSessions(limit = 20): Promise<TimerSession[]> {
   const db = await getDatabase();
   const rows = await db.select<TimerRow[]>(
-    `SELECT id, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded
+    `SELECT id, title, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded
      FROM timer_sessions
      WHERE status IN ('completed', 'cancelled')
      ORDER BY COALESCE(ended_at, started_at) DESC
