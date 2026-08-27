@@ -1,6 +1,7 @@
 import Database from '@tauri-apps/plugin-sql';
 
 let databasePromise: Promise<Database> | null = null;
+let writeQueue: Promise<void> = Promise.resolve();
 
 export type DailyExperienceRow = {
   date_key: string;
@@ -19,133 +20,46 @@ export function getDatabase(): Promise<Database> {
 }
 
 async function openDatabase(): Promise<Database> {
+  // The Rust-side SQL plugin owns schema migrations. Keeping schema creation in
+  // one place avoids two startup connections competing for SQLite locks.
   const db = await Database.load('sqlite:dayforge.db');
+
+  // Wait briefly for another short write to finish instead of failing with
+  // SQLITE_BUSY. Do not switch journal mode from the UI process at startup.
+  await db.execute('PRAGMA busy_timeout = 5000');
   await db.execute('PRAGMA foreign_keys = ON');
-  await db.execute('PRAGMA journal_mode = WAL');
-  await migrate(db);
+
   return db;
 }
 
-async function migrate(db: Database): Promise<void> {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS app_meta (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      task_type TEXT NOT NULL CHECK(task_type IN ('daily', 'persistent')),
-      difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
-      is_active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      completed_at TEXT NULL
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS task_completions (
-      id TEXT PRIMARY KEY,
-      task_id TEXT NOT NULL,
-      date_key TEXT NOT NULL,
-      completed_at TEXT NOT NULL,
-      UNIQUE(task_id, date_key),
-      FOREIGN KEY(task_id) REFERENCES tasks(id)
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS habits (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
-      reward_cap_per_day INTEGER NULL,
-      is_active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS habit_checkins (
-      id TEXT PRIMARY KEY,
-      habit_id TEXT NOT NULL,
-      checked_in_at TEXT NOT NULL,
-      date_key TEXT NOT NULL,
-      exp_eligible INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY(habit_id) REFERENCES habits(id)
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS timer_sessions (
-      id TEXT PRIMARY KEY,
-      category TEXT NOT NULL,
-      difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
-      started_at TEXT NOT NULL,
-      ended_at TEXT NULL,
-      elapsed_seconds INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL,
-      exp_awarded INTEGER NOT NULL DEFAULT 0
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS sleep_records (
-      id TEXT PRIMARY KEY,
-      date_key TEXT NOT NULL UNIQUE,
-      bedtime TEXT NOT NULL,
-      wake_time TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS experience_logs (
-      id TEXT PRIMARY KEY,
-      source_type TEXT NOT NULL,
-      source_id TEXT NULL,
-      description TEXT NOT NULL,
-      amount INTEGER NOT NULL,
-      occurred_at TEXT NOT NULL,
-      date_key TEXT NOT NULL
-    )
-  `);
-
-  await db.execute(`
-    CREATE INDEX IF NOT EXISTS idx_experience_logs_date_key
-    ON experience_logs(date_key)
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS app_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-
-  const now = new Date().toISOString();
-  await db.execute(
-    `INSERT OR IGNORE INTO app_meta (key, value, updated_at) VALUES ('schema_version', '1', $1)`,
-    [now],
+/**
+ * Serialize Dayforge writes in the renderer. The SQL plugin uses a pool, so
+ * manual BEGIN/COMMIT statements issued through separate calls are unsafe:
+ * the calls may land on different pooled connections and leave SQLite locked.
+ */
+export function runDatabaseWrite<T>(operation: (db: Database) => Promise<T>): Promise<T> {
+  const run = writeQueue.then(
+    async () => operation(await getDatabase()),
+    async () => operation(await getDatabase()),
   );
+
+  writeQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return run;
 }
 
 export async function setSetting(key: string, value: unknown): Promise<void> {
-  const db = await getDatabase();
-  await db.execute(
-    `INSERT INTO app_settings (key, value, updated_at)
-     VALUES ($1, $2, $3)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    [key, JSON.stringify(value), new Date().toISOString()],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO app_settings (key, value, updated_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      [key, JSON.stringify(value), new Date().toISOString()],
+    );
+  });
 }
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
