@@ -1,5 +1,5 @@
 import { endOfWeek, format, startOfWeek } from 'date-fns';
-import { getDatabase } from '../../db/database';
+import { getDatabase, runDatabaseWrite } from '../../db/database';
 
 export type SleepRecord = {
   id: string;
@@ -65,20 +65,21 @@ export async function upsertSleepRecord(input: {
     throw new Error('Sleep duration must be between 1 and 16 hours.');
   }
 
-  const db = await getDatabase();
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
-  await db.execute(
-    `INSERT INTO sleep_records
-      (id, date_key, bedtime, wake_time, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $5)
-     ON CONFLICT(date_key) DO UPDATE SET
-       bedtime = excluded.bedtime,
-       wake_time = excluded.wake_time,
-       updated_at = excluded.updated_at`,
-    [id, input.dateKey, input.bedtime, input.wakeTime, now],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO sleep_records
+        (id, date_key, bedtime, wake_time, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $5)
+       ON CONFLICT(date_key) DO UPDATE SET
+         bedtime = excluded.bedtime,
+         wake_time = excluded.wake_time,
+         updated_at = excluded.updated_at`,
+      [id, input.dateKey, input.bedtime, input.wakeTime, now],
+    );
+  });
 
   const saved = await getSleepRecord(input.dateKey);
   if (!saved) throw new Error('Sleep record could not be reloaded after saving.');
@@ -116,6 +117,7 @@ export async function listWeekSleepRecords(anchorDate = new Date()): Promise<Sle
 }
 
 export async function deleteSleepRecord(dateKey: string): Promise<void> {
-  const db = await getDatabase();
-  await db.execute('DELETE FROM sleep_records WHERE date_key = $1', [dateKey]);
+  await runDatabaseWrite(async (db) => {
+    await db.execute('DELETE FROM sleep_records WHERE date_key = $1', [dateKey]);
+  });
 }
