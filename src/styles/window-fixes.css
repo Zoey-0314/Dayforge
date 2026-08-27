@@ -2,13 +2,18 @@ html,
 body,
 #root {
   background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
 }
 
-/* Keep the webview itself visually borderless. The rounded glass card is the
-   only visible surface; the window no longer gets a second outer frame. */
+/* The glass surface now fills the complete native window. Leaving padding
+   around the card exposed the WebView/DWM frame as a visible rectangular ring. */
 .widget-shell,
 .widget-shell--expanded {
   padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
   background: transparent !important;
 }
 
@@ -16,27 +21,47 @@ body,
 .widget-card--expanded {
   isolation: isolate;
   border: 0 !important;
-  border-radius: 26px;
+  outline: 0 !important;
+  border-radius: 24px !important;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(89, 154, 216, 0.06) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(89, 154, 216, 0.04) !important;
+  clip-path: inset(0 round 24px);
 }
 
 .widget-card--expanded {
-  border-radius: 28px;
+  border-radius: 26px !important;
+  clip-path: inset(0 round 26px);
+  display: grid !important;
+  grid-template-rows: 40px auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
-/* Reserve a real, dedicated chrome row. Nothing in the feature grid may
-   paint above or through this row. */
+/* The expanded layout owns a dedicated chrome row. Feature panels cannot enter
+   this row, so the window controls never sit on top of To-do/Timer content. */
 .window-chrome {
   position: relative !important;
   z-index: 1000 !important;
   height: 40px !important;
   flex: 0 0 40px !important;
-  margin: 0 0 10px !important;
-  padding: 2px 4px 2px 8px !important;
+  margin: 0 0 8px !important;
+  padding: 2px 5px 2px 8px !important;
   overflow: visible !important;
+}
+
+.widget-card--expanded > .window-chrome {
+  grid-row: 1;
+  margin-bottom: 0 !important;
+}
+
+.widget-card--expanded > .level-strip {
+  grid-row: 2;
+  padding-bottom: 10px !important;
+}
+
+.widget-card--expanded > .expanded-grid {
+  grid-row: 3;
+  min-height: 0;
 }
 
 .window-chrome__brand {
@@ -49,21 +74,29 @@ body,
   position: relative;
   z-index: 1000;
   align-self: stretch;
-  min-width: 24px;
+  min-width: 30px;
 }
 
 .window-chrome__actions {
   position: relative !important;
   z-index: 1100 !important;
   flex: 0 0 auto;
+  display: flex !important;
+  align-items: center;
+  gap: 1px !important;
+  padding: 1px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: rgba(8, 22, 40, 0.055) !important;
   pointer-events: auto !important;
   isolation: isolate;
-  background: rgba(8, 22, 40, 0.10) !important;
 }
 
 .window-chrome__actions button {
   position: relative !important;
   z-index: 1101 !important;
+  width: 26px !important;
+  height: 25px !important;
   pointer-events: auto !important;
 }
 
@@ -87,16 +120,25 @@ body,
   min-height: 0;
 }
 
-/* The duplicate expanded quick-controls used to sit at the same top-right
-   coordinates as the window buttons. Keep it disabled even if re-mounted by
-   an older cached bundle during development. */
+/* The legacy expanded preference pills used the same top-right coordinates as
+   the custom window controls. Keep them disabled if an older cached module is
+   ever mounted. */
 .desktop-quick-controls {
   display: none !important;
 }
 
-/* Preserve the pointer-following glass highlight without allowing it to
-   intercept form controls. */
-.widget-card::after,
+/* Smaller, tighter pointer-following highlight. */
+.widget-card::after {
+  pointer-events: none !important;
+  background:
+    radial-gradient(
+      86px circle at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.14),
+      rgba(168, 216, 249, 0.04) 34%,
+      transparent 70%
+    ) !important;
+}
+
 .widget-card::before {
   pointer-events: none !important;
 }
@@ -107,4 +149,5 @@ button,
 textarea {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
 }
