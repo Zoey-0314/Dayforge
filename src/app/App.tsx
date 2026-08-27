@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -6,12 +6,27 @@ import { getDailyExperienceTotals, getDatabase } from '../db/database';
 import { type Difficulty } from '../domain/difficulty';
 import { grantDailyLoginIfEligible } from '../features/experience/dailyLoginService';
 import { getLevelProgress, getTotalExperience } from '../features/experience/experienceService';
+import {
+  grantOnlineExperienceForVerifiedSeconds,
+  ONLINE_RULES,
+} from '../features/experience/onlineExperienceService';
 import { Heatmap, type HeatmapDatum, type HeatmapMode } from '../features/heatmap/Heatmap';
 import { checkInHabit, createHabit, listHabits, type HabitItem } from '../features/habits/habitService';
+import {
+  cancelTimer,
+  checkpointTimer,
+  completeTimer,
+  pauseTimer,
+  recoverTimerAfterLaunch,
+  resumeTimer,
+  startTimer,
+  type TimerCategory,
+  type TimerSession,
+} from '../features/timer/timerService';
 import { completeTodo, createTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
 
 const COMPACT_SIZE = { width: 320, height: 320 };
-const EXPANDED_SIZE = { width: 860, height: 650 };
+const EXPANDED_SIZE = { width: 920, height: 680 };
 
 export function App() {
   const [mode, setMode] = useState<HeatmapMode>('month');
@@ -29,6 +44,12 @@ export function App() {
   const [todoDifficulty, setTodoDifficulty] = useState<Difficulty>('easy');
   const [habitTitle, setHabitTitle] = useState('');
   const [habitDifficulty, setHabitDifficulty] = useState<Difficulty>('easy');
+
+  const [timerCategory, setTimerCategory] = useState<TimerCategory>('Studying');
+  const [timerDifficulty, setTimerDifficulty] = useState<Difficulty>('easy');
+  const [timerSession, setTimerSession] = useState<TimerSession | null>(null);
+  const [timerElapsed, setTimerElapsed] = useState(0);
+  const onlineVerifiedSeconds = useRef(0);
 
   const level = useMemo(() => getLevelProgress(totalExperience), [totalExperience]);
 
@@ -54,8 +75,15 @@ export function App() {
     async function boot() {
       try {
         await getDatabase();
-        const loginReward = await grantDailyLoginIfEligible();
+        const [loginReward, recoveredTimer] = await Promise.all([
+          grantDailyLoginIfEligible(),
+          recoverTimerAfterLaunch(),
+        ]);
         if (!cancelled) {
+          if (recoveredTimer) {
+            setTimerSession(recoveredTimer);
+            setTimerElapsed(recoveredTimer.elapsedSeconds);
+          }
           await refresh();
           setReady(true);
           setError(null);
@@ -79,6 +107,40 @@ export function App() {
     const id = window.setTimeout(() => setToast(null), 2200);
     return () => window.clearTimeout(id);
   }, [toast]);
+
+  useEffect(() => {
+    if (!timerSession || timerSession.status !== 'running') return;
+
+    const id = window.setInterval(() => {
+      setTimerElapsed((current) => {
+        const next = current + 1;
+        if (next % 5 === 0) void checkpointTimer(timerSession.id, next);
+        return next;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [timerSession]);
+
+  useEffect(() => {
+    const heartbeat = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      onlineVerifiedSeconds.current += 60;
+
+      if (onlineVerifiedSeconds.current >= ONLINE_RULES.unitSeconds) {
+        const verified = onlineVerifiedSeconds.current;
+        onlineVerifiedSeconds.current = 0;
+        void grantOnlineExperienceForVerifiedSeconds(verified).then(async (result) => {
+          if (result.awarded > 0) {
+            setToast(`Online +${result.awarded} EXP`);
+            await refresh();
+          }
+        });
+      }
+    }, 60_000);
+
+    return () => window.clearInterval(heartbeat);
+  }, [refresh]);
 
   async function toggleExpanded() {
     const next = !expanded;
@@ -129,6 +191,56 @@ export function App() {
     }
   }
 
+  async function handleTimerStart() {
+    try {
+      const session = await startTimer(timerCategory, timerDifficulty);
+      setTimerSession(session);
+      setTimerElapsed(0);
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not start timer.');
+    }
+  }
+
+  async function handleTimerPauseResume() {
+    if (!timerSession) return;
+    try {
+      if (timerSession.status === 'running') {
+        await pauseTimer(timerSession.id, timerElapsed);
+        setTimerSession({ ...timerSession, status: 'paused', elapsedSeconds: timerElapsed });
+      } else if (timerSession.status === 'paused') {
+        await resumeTimer(timerSession.id);
+        setTimerSession({ ...timerSession, status: 'running', elapsedSeconds: timerElapsed });
+      }
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not update timer.');
+    }
+  }
+
+  async function handleTimerComplete() {
+    if (!timerSession) return;
+    try {
+      const reward = await completeTimer(timerSession, timerElapsed);
+      setTimerSession(null);
+      setTimerElapsed(0);
+      setToast(reward > 0 ? `Focus complete +${reward} EXP` : 'Session saved · 5 minutes required for EXP');
+      await refresh();
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not complete timer.');
+    }
+  }
+
+  async function handleTimerCancel() {
+    if (!timerSession) return;
+    try {
+      await cancelTimer(timerSession.id, timerElapsed);
+      setTimerSession(null);
+      setTimerElapsed(0);
+      setToast('Timer cancelled · session history saved');
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'Could not cancel timer.');
+    }
+  }
+
   const dailyTodos = todos.filter((task) => task.taskType === 'daily');
   const persistentTodos = todos.filter((task) => task.taskType === 'persistent');
 
@@ -167,7 +279,7 @@ export function App() {
             </div>
 
             <footer className="widget-footer">
-              <span>{expanded ? 'Your heatmap is rebuilt from saved EXP history.' : 'Every saved EXP event leaves a mark.'}</span>
+              <span>{expanded ? 'Heatmap rebuilt from saved EXP history.' : 'Every saved EXP event leaves a mark.'}</span>
               <button className="expand-button" type="button" aria-label={expanded ? 'Collapse Dayforge' : 'Expand Dayforge'} onClick={() => void toggleExpanded()}>
                 {expanded ? '−' : '+'}
               </button>
@@ -221,10 +333,34 @@ export function App() {
                 </div>
               </section>
 
-              <section className="feature-panel coming-panel">
-                <div className="panel-heading"><div><p className="eyebrow">NEXT</p><h2>Timer + Sleep</h2></div></div>
-                <p className="coming-copy">The data foundation is ready. Timer sessions and sleep records are the next modules to connect to this expanded view.</p>
-                <div className="persistence-badge">SQLite persistence active</div>
+              <section className="feature-panel timer-panel">
+                <div className="panel-heading">
+                  <div><p className="eyebrow">FOCUS</p><h2>Timer</h2></div>
+                  <span className="panel-note">Online +1 EXP / 5 min · cap {ONLINE_RULES.dailyCap}/day</span>
+                </div>
+
+                <div className="timer-controls">
+                  <select value={timerCategory} disabled={Boolean(timerSession)} onChange={(e) => setTimerCategory(e.target.value as TimerCategory)}>
+                    <option>Studying</option><option>Working</option><option>Exercise</option><option>Custom</option>
+                  </select>
+                  <select value={timerDifficulty} disabled={Boolean(timerSession)} onChange={(e) => setTimerDifficulty(e.target.value as Difficulty)}>
+                    <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                  </select>
+                </div>
+
+                <div className="timer-clock">{formatElapsed(timerElapsed)}</div>
+                <p className="timer-status">
+                  {timerSession ? `${timerSession.category} · ${timerSession.status}` : 'Choose a mode and difficulty, then start.'}
+                </p>
+
+                <div className="timer-actions">
+                  {!timerSession ? <button onClick={() => void handleTimerStart()}>Start</button> : null}
+                  {timerSession ? <button onClick={() => void handleTimerPauseResume()}>{timerSession.status === 'running' ? 'Pause' : 'Resume'}</button> : null}
+                  {timerSession ? <button onClick={() => void handleTimerComplete()}>Complete</button> : null}
+                  {timerSession ? <button className="secondary" onClick={() => void handleTimerCancel()}>Cancel</button> : null}
+                </div>
+
+                <div className="timer-rule">EXP is granted per complete 5-minute block. Medium ×1.5, Hard ×2. A running timer is restored as paused after relaunch so closed/sleep time is never falsely rewarded.</div>
               </section>
             </>
           ) : null}
@@ -254,4 +390,16 @@ function TaskSection({ title, tasks, onComplete }: { title: string; tasks: TodoI
 
 function EmptyState({ text }: { text: string }) {
   return <div className="empty-state">{text}</div>;
+}
+
+function formatElapsed(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
