@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { getDatabase } from '../../db/database';
+import { getDatabase, runDatabaseWrite } from '../../db/database';
 import { getDifficultyExperience, type Difficulty } from '../../domain/difficulty';
 
 export type TaskType = 'daily' | 'persistent';
@@ -63,53 +63,50 @@ export async function createTodo(input: {
   const title = input.title.trim();
   if (!title) throw new Error('Task title cannot be empty.');
 
-  const db = await getDatabase();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.execute(
-    `INSERT INTO tasks
-      (id, title, task_type, difficulty, is_active, created_at, updated_at, completed_at)
-     VALUES ($1, $2, $3, $4, 1, $5, $5, NULL)`,
-    [id, title, input.taskType, input.difficulty, now],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO tasks
+        (id, title, task_type, difficulty, is_active, created_at, updated_at, completed_at)
+       VALUES ($1, $2, $3, $4, 1, $5, $5, NULL)`,
+      [id, title, input.taskType, input.difficulty, now],
+    );
+  });
 
   return id;
 }
 
 export async function completeTodo(taskId: string, date = new Date()): Promise<number> {
-  const db = await getDatabase();
   const dateKey = todayKey(date);
   const now = date.toISOString();
-  const rows = await db.select<Array<{
-    title: string;
-    task_type: TaskType;
-    difficulty: Difficulty;
-    completed_at: string | null;
-  }>>(
-    `SELECT title, task_type, difficulty, completed_at
-     FROM tasks
-     WHERE id = $1 AND is_active = 1
-     LIMIT 1`,
-    [taskId],
-  );
 
-  const task = rows[0];
-  if (!task) throw new Error('Task not found.');
-  const reward = getDifficultyExperience(task.difficulty);
+  return runDatabaseWrite(async (db) => {
+    const rows = await db.select<Array<{
+      title: string;
+      task_type: TaskType;
+      difficulty: Difficulty;
+      completed_at: string | null;
+    }>>(
+      `SELECT title, task_type, difficulty, completed_at
+       FROM tasks
+       WHERE id = $1 AND is_active = 1
+       LIMIT 1`,
+      [taskId],
+    );
 
-  await db.execute('BEGIN IMMEDIATE');
-  try {
+    const task = rows[0];
+    if (!task) throw new Error('Task not found.');
+    const reward = getDifficultyExperience(task.difficulty);
+
     if (task.task_type === 'daily') {
       const result = await db.execute(
         `INSERT OR IGNORE INTO task_completions (id, task_id, date_key, completed_at)
          VALUES ($1, $2, $3, $4)`,
         [crypto.randomUUID(), taskId, dateKey, now],
       );
-      if (result.rowsAffected === 0) {
-        await db.execute('ROLLBACK');
-        return 0;
-      }
+      if (result.rowsAffected === 0) return 0;
     } else {
       const result = await db.execute(
         `UPDATE tasks
@@ -117,10 +114,7 @@ export async function completeTodo(taskId: string, date = new Date()): Promise<n
          WHERE id = $2 AND completed_at IS NULL`,
         [now, taskId],
       );
-      if (result.rowsAffected === 0) {
-        await db.execute('ROLLBACK');
-        return 0;
-      }
+      if (result.rowsAffected === 0) return 0;
     }
 
     await db.execute(
@@ -130,19 +124,16 @@ export async function completeTodo(taskId: string, date = new Date()): Promise<n
       [crypto.randomUUID(), taskId, `Completed task: ${task.title}`, reward, now, dateKey],
     );
 
-    await db.execute('COMMIT');
     return reward;
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
-  }
+  });
 }
 
 export async function deleteTodo(taskId: string): Promise<void> {
-  const db = await getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
-    `UPDATE tasks SET is_active = 0, updated_at = $1 WHERE id = $2`,
-    [now, taskId],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE tasks SET is_active = 0, updated_at = $1 WHERE id = $2`,
+      [now, taskId],
+    );
+  });
 }
