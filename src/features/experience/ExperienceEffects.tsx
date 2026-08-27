@@ -1,8 +1,51 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ONLINE_EXP_AWARDED_EVENT } from './onlineExperienceService';
+
+type OnlineAwardDetail = {
+  amount?: number;
+};
+
+type OnlinePulse = {
+  token: number;
+  amount: number;
+};
 
 export function ExperienceEffects({ level, enabled }: { level: number; enabled: boolean }) {
   const previousLevel = useRef<number | null>(null);
   const [levelUpToken, setLevelUpToken] = useState<number | null>(null);
+  const [onlinePulse, setOnlinePulse] = useState<OnlinePulse | null>(null);
+  const [levelAnchor, setLevelAnchor] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLevelAnchor(null);
+      return;
+    }
+
+    const anchor = document.querySelector<HTMLElement>('.level-strip__level');
+    setLevelAnchor(anchor);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleOnlineAward = (event: Event) => {
+      const detail = (event as CustomEvent<OnlineAwardDetail>).detail;
+      const amount = Number(detail?.amount ?? 0);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      setOnlinePulse({ token: Date.now(), amount });
+    };
+
+    window.addEventListener(ONLINE_EXP_AWARDED_EVENT, handleOnlineAward as EventListener);
+    return () => window.removeEventListener(ONLINE_EXP_AWARDED_EVENT, handleOnlineAward as EventListener);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!onlinePulse) return;
+    const timeout = window.setTimeout(() => setOnlinePulse(null), 1900);
+    return () => window.clearTimeout(timeout);
+  }, [onlinePulse]);
 
   useEffect(() => {
     // Treat the first fully-loaded level as the baseline so reopening an
@@ -32,7 +75,14 @@ export function ExperienceEffects({ level, enabled }: { level: number; enabled: 
 
   return (
     <>
-      {enabled ? <div className="online-exp-float" aria-hidden="true">+0.5 EXP</div> : null}
+      {enabled && onlinePulse && levelAnchor
+        ? createPortal(
+            <span className="online-exp-float" key={onlinePulse.token} aria-hidden="true">
+              +{onlinePulse.amount} EXP
+            </span>,
+            levelAnchor,
+          )
+        : null}
       {levelUpToken !== null ? (
         <div className="level-up-celebration" key={levelUpToken} aria-hidden="true">
           <div className="level-up-glow" />

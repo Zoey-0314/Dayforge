@@ -6,6 +6,20 @@ const ONLINE_UNIT_SECONDS = 300;
 const ONLINE_EXP_PER_UNIT = 1;
 const ONLINE_DAILY_CAP = 30;
 
+export const ONLINE_EXP_AWARDED_EVENT = 'dayforge:online-exp-awarded';
+
+function emitOnlineExperienceAward(amount: number): void {
+  if (amount <= 0 || typeof window === 'undefined') return;
+
+  window.dispatchEvent(new CustomEvent(ONLINE_EXP_AWARDED_EVENT, {
+    detail: {
+      amount,
+      unitSeconds: ONLINE_UNIT_SECONDS,
+      awardedAt: new Date().toISOString(),
+    },
+  }));
+}
+
 export async function getTodayOnlineExperience(date = new Date()): Promise<number> {
   const db = await getDatabase();
   const dateKey = format(date, 'yyyy-MM-dd');
@@ -37,6 +51,10 @@ export async function grantOnlineExperienceForVerifiedSeconds(
       amount: award,
       occurredAt: date,
     });
+
+    // The visual feedback is emitted only after the durable EXP ledger write
+    // succeeds. This keeps the UI exactly aligned with real online rewards.
+    emitOnlineExperienceAward(award);
   }
 
   return {

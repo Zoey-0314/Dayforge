@@ -1,0 +1,168 @@
+/* Readability pass for neutral glass. Loaded last so it only tightens the
+   material and EXP feedback without changing Dayforge's layout. */
+
+:root {
+  --glass-text: rgba(255, 255, 255, 0.97);
+  --glass-muted: rgba(255, 255, 255, 0.72);
+  --glass-dim: rgba(255, 255, 255, 0.52);
+}
+
+.widget-card,
+.widget-card--expanded {
+  background:
+    radial-gradient(120% 84% at 10% -8%, rgba(255, 255, 255, 0.15), transparent 43%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(38, 38, 40, 0.25) 42%, rgba(10, 10, 12, 0.40) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -24px 48px rgba(0, 0, 0, 0.055) !important;
+  backdrop-filter: blur(36px) saturate(96%) brightness(0.70) contrast(1.12) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(96%) brightness(0.70) contrast(1.12) !important;
+}
+
+.widget-card::before {
+  background:
+    radial-gradient(112% 70% at 8% -8%, rgba(255, 255, 255, 0.12), transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(0, 0, 0, 0.09)) !important;
+  mix-blend-mode: normal !important;
+}
+
+.feature-panel,
+.expanded-grid .activity-panel {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background:
+    radial-gradient(110% 70% at 8% -10%, rgba(255, 255, 255, 0.095), transparent 46%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(24, 24, 26, 0.20) 56%, rgba(8, 8, 10, 0.25)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.17),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+    inset 0 -18px 34px rgba(0, 0, 0, 0.035) !important;
+  backdrop-filter: blur(26px) saturate(96%) brightness(0.78) contrast(1.08) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(96%) brightness(0.78) contrast(1.08) !important;
+}
+
+h1,
+h2,
+h3,
+.level-strip__level,
+.level-strip__exp,
+.window-chrome__brand,
+.timer-clock,
+.task-row__title,
+.habit-row__main strong,
+.habit-row__count strong,
+.timer-history-row__main strong {
+  text-shadow:
+    0 1px 11px rgba(0, 0, 0, 0.72),
+    0 0 2px rgba(0, 0, 0, 0.50) !important;
+}
+
+.eyebrow,
+.panel-note,
+.widget-footer,
+.timer-status,
+.timer-rule,
+.empty-state,
+.status-message,
+.habit-row__main small,
+.habit-row__count small,
+.sleep-footer,
+.sleep-week-nav,
+.timer-history-row__main small,
+.timer-history-row__meta small {
+  color: rgba(255, 255, 255, 0.69) !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.56) !important;
+}
+
+.level-strip__level {
+  position: relative !important;
+  display: inline-block !important;
+}
+
+/* Online EXP is no longer decorative. This element is mounted only when the
+   SQLite EXP ledger has actually accepted an ONLINE reward. It is portaled
+   into the level label so the feedback always appears directly beside Lv.X. */
+.online-exp-float,
+.widget-shell--expanded .online-exp-float {
+  position: absolute !important;
+  left: calc(100% + 8px) !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  z-index: 1500 !important;
+  width: max-content;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 8px !important;
+  font-weight: 780 !important;
+  letter-spacing: 0.035em !important;
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.18),
+    0 1px 8px rgba(0, 0, 0, 0.66) !important;
+  opacity: 0;
+  animation: real-online-exp-rise 1.75s cubic-bezier(0.22, 0.82, 0.2, 1) both !important;
+}
+
+@keyframes real-online-exp-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.96);
+    filter: blur(1.5px);
+  }
+  14% {
+    opacity: 0.96;
+    transform: translate3d(0, -1px, 0) scale(1);
+    filter: blur(0);
+  }
+  58% {
+    opacity: 0.78;
+    transform: translate3d(2px, -8px, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(4px, -17px, 0) scale(0.99);
+    filter: blur(0.4px);
+  }
+}
+
+/* Keep interactive controls readable over very bright wallpaper while staying
+   neutral instead of returning to the old blue tint. */
+.segmented,
+.expand-button,
+.quick-form input,
+.quick-form select,
+.quick-form button,
+.timer-name-input,
+.timer-controls select,
+.timer-actions button,
+.sleep-form input,
+.sleep-form button,
+.sleep-week-nav button,
+.timer-history-toggle,
+.timer-history-close,
+.timer-history-icon,
+.timer-history-rename,
+.task-row,
+.habit-row {
+  background-color: rgba(12, 12, 14, 0.14) !important;
+}
+
+.quick-form input,
+.timer-name-input,
+.timer-history-rename,
+.sleep-form input {
+  background: rgba(8, 8, 10, 0.20) !important;
+}
+
+.quick-form input::placeholder,
+.timer-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.48) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .online-exp-float,
+  .widget-shell--expanded .online-exp-float {
+    animation-duration: 1ms !important;
+  }
+}
