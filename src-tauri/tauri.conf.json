@@ -31,6 +31,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "targets": ["nsis"],
+    "publisher": "Zoey-0314",
+    "shortDescription": "Local-first productivity and growth desktop widget",
+    "longDescription": "Dayforge is a persistent Windows desktop productivity widget with EXP, activity heatmaps, tasks, habits, focus timers, and sleep records.",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
