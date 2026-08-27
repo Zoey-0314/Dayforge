@@ -12,6 +12,8 @@ const WINDOW_POSITION_KEY = 'window_position';
 const ALWAYS_ON_TOP_KEY = 'always_on_top';
 const AUTOSTART_KEY = 'launch_on_startup';
 
+let lifecyclePromise: Promise<void> | null = null;
+
 function isFinitePosition(value: unknown): value is WindowPosition {
   if (!value || typeof value !== 'object') return false;
   const position = value as Partial<WindowPosition>;
@@ -38,31 +40,31 @@ async function isPositionVisible(position: WindowPosition): Promise<boolean> {
 }
 
 export async function restoreDesktopWindowState(): Promise<void> {
-  const window = getCurrentWindow();
+  const appWindow = getCurrentWindow();
   const [savedPosition, alwaysOnTop] = await Promise.all([
     getSetting<WindowPosition | null>(WINDOW_POSITION_KEY, null),
     getSetting<boolean>(ALWAYS_ON_TOP_KEY, true),
   ]);
 
-  await window.setAlwaysOnTop(alwaysOnTop);
+  await appWindow.setAlwaysOnTop(alwaysOnTop);
 
   if (isFinitePosition(savedPosition) && (await isPositionVisible(savedPosition))) {
-    await window.setPosition(new PhysicalPosition(savedPosition.x, savedPosition.y));
+    await appWindow.setPosition(new PhysicalPosition(savedPosition.x, savedPosition.y));
   } else if (savedPosition) {
-    await window.center();
+    await appWindow.center();
   }
 }
 
 export async function startWindowPositionPersistence(): Promise<() => void> {
-  const window = getCurrentWindow();
+  const appWindow = getCurrentWindow();
   let saveTimer: number | null = null;
   let latestPosition: WindowPosition | null = null;
 
-  const unlisten = await window.onMoved(({ payload }) => {
+  const unlisten = await appWindow.onMoved(({ payload }) => {
     latestPosition = { x: payload.x, y: payload.y };
 
-    if (saveTimer !== null) window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(() => {
+    if (saveTimer !== null) globalThis.clearTimeout(saveTimer);
+    saveTimer = globalThis.setTimeout(() => {
       saveTimer = null;
       const position = latestPosition;
       if (!position) return;
@@ -73,7 +75,7 @@ export async function startWindowPositionPersistence(): Promise<() => void> {
   });
 
   return () => {
-    if (saveTimer !== null) window.clearTimeout(saveTimer);
+    if (saveTimer !== null) globalThis.clearTimeout(saveTimer);
     unlisten();
   };
 }
@@ -106,7 +108,16 @@ export async function setLaunchOnStartupPreference(value: boolean): Promise<void
   await setSetting(AUTOSTART_KEY, value);
 }
 
-export async function initializeDesktopLifecycle(): Promise<void> {
-  await restoreDesktopWindowState();
-  await startWindowPositionPersistence();
+export function initializeDesktopLifecycle(): Promise<void> {
+  if (!lifecyclePromise) {
+    lifecyclePromise = (async () => {
+      await restoreDesktopWindowState();
+      await startWindowPositionPersistence();
+    })().catch((error) => {
+      lifecyclePromise = null;
+      throw error;
+    });
+  }
+
+  return lifecyclePromise;
 }
