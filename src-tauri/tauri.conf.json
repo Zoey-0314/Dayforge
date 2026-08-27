@@ -30,11 +30,6 @@
       "csp": null
     }
   },
-  "plugins": {
-    "sql": {
-      "preload": ["sqlite:dayforge.db"]
-    }
-  },
   "bundle": {
     "active": true,
     "targets": ["nsis"],
