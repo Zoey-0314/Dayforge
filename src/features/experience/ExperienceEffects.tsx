@@ -5,6 +5,13 @@ export function ExperienceEffects({ level, enabled }: { level: number; enabled: 
   const [levelUpToken, setLevelUpToken] = useState<number | null>(null);
 
   useEffect(() => {
+    // Treat the first fully-loaded level as the baseline so reopening an
+    // existing Lv.2+ profile does not replay a fake level-up celebration.
+    if (!enabled) {
+      previousLevel.current = null;
+      return;
+    }
+
     if (previousLevel.current === null) {
       previousLevel.current = level;
       return;
@@ -15,7 +22,7 @@ export function ExperienceEffects({ level, enabled }: { level: number; enabled: 
     }
 
     previousLevel.current = level;
-  }, [level]);
+  }, [enabled, level]);
 
   useEffect(() => {
     if (levelUpToken === null) return;

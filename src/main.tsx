@@ -7,6 +7,7 @@ import './styles/timer.css';
 import './styles/desktop.css';
 import './styles/window-fixes.css';
 import './styles/vision-glass.css';
+import './styles/motion-polish.css';
 
 void initializeDesktopLifecycle().catch((error) => {
   console.error('Dayforge desktop lifecycle initialization failed:', error);
