@@ -1,8 +1,4 @@
-use tauri::{
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
-};
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn show_main_window(app: &tauri::AppHandle) {
@@ -16,6 +12,51 @@ fn show_main_window(app: &tauri::AppHandle) {
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
+
+#[cfg(target_os = "windows")]
+fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
+    use std::{ffi::c_void, mem::size_of};
+
+    #[link(name = "dwmapi")]
+    extern "system" {
+        fn DwmSetWindowAttribute(
+            hwnd: *mut c_void,
+            dw_attribute: i32,
+            pv_attribute: *const c_void,
+            cb_attribute: u32,
+        ) -> i32;
+    }
+
+    // Windows 11 draws an accent-colored DWM frame around some undecorated
+    // windows even when Tauri decorations and shadows are disabled. Asking DWM
+    // for no border removes that extra outer ring. The calls safely no-op on
+    // older Windows versions that do not support these attributes.
+    const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
+    const DWMWA_BORDER_COLOR: i32 = 34;
+    const DWMWCP_ROUND: u32 = 2;
+    const DWMWA_COLOR_NONE: u32 = 0xFFFF_FFFE;
+
+    if let Ok(hwnd) = window.hwnd() {
+        let raw_hwnd = hwnd.0 as *mut c_void;
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                raw_hwnd,
+                DWMWA_BORDER_COLOR,
+                &DWMWA_COLOR_NONE as *const u32 as *const c_void,
+                size_of::<u32>() as u32,
+            );
+            let _ = DwmSetWindowAttribute(
+                raw_hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &DWMWCP_ROUND as *const u32 as *const c_void,
+                size_of::<u32>() as u32,
+            );
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn suppress_native_window_frame(_window: &tauri::WebviewWindow) {}
 
 fn database_migrations() -> Vec<Migration> {
     vec![Migration {
@@ -125,44 +166,25 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![quit_app])
         .setup(|app| {
             #[cfg(desktop)]
-            {
-                app.handle().plugin(tauri_plugin_autostart::init(
-                    tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-                    None,
-                ))?;
+            app.handle().plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None,
+            ))?;
 
-                let show_item = MenuItem::with_id(app, "show", "Show Dayforge", true, None::<&str>)?;
-                let quit_item = MenuItem::with_id(app, "quit", "Quit Dayforge", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
-
-                let mut tray = TrayIconBuilder::new()
-                    .menu(&menu)
-                    .menu_on_left_click(false)
-                    .tooltip("Dayforge")
-                    .on_menu_event(|app, event| match event.id().as_ref() {
-                        "show" => show_main_window(app),
-                        "quit" => app.exit(0),
-                        _ => {}
-                    })
-                    .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } = event
-                        {
-                            show_main_window(tray.app_handle());
-                        }
-                    });
-
-                if let Some(icon) = app.default_window_icon() {
-                    tray = tray.icon(icon.clone());
-                }
-
-                tray.build(app)?;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_decorations(false);
+                let _ = window.set_shadow(false);
+                suppress_native_window_frame(&window);
             }
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
+                // Dayforge no longer stays resident in the system tray. Closing
+                // the main window means closing the application.
+                window.app_handle().exit(0);
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running Dayforge");
