@@ -26,6 +26,9 @@ jobs:
       - name: TypeScript and Vite build
         run: npm run build
 
+      - name: Generate platform icons
+        run: npm run tauri icon src-tauri/icons/dayforge.svg
+
       - name: Rust check
         working-directory: src-tauri
         run: cargo check
