@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { getDatabase } from '../../db/database';
+import { getDatabase, runDatabaseWrite } from '../../db/database';
 import type { Difficulty } from '../../domain/difficulty';
 import { grantExperience } from '../experience/experienceService';
 
@@ -68,13 +68,13 @@ export async function recoverTimerAfterLaunch(): Promise<TimerSession | null> {
   const session = await getActiveTimer();
   if (!session) return null;
 
-  // Never count time while Dayforge was closed or the computer was asleep.
   if (session.status === 'running') {
-    const db = await getDatabase();
-    await db.execute(
-      `UPDATE timer_sessions SET status = 'paused' WHERE id = $1`,
-      [session.id],
-    );
+    await runDatabaseWrite(async (db) => {
+      await db.execute(
+        `UPDATE timer_sessions SET status = 'paused' WHERE id = $1`,
+        [session.id],
+      );
+    });
     return { ...session, status: 'paused' };
   }
 
@@ -85,16 +85,17 @@ export async function startTimer(category: TimerCategory, difficulty: Difficulty
   const existing = await getActiveTimer();
   if (existing) throw new Error('Finish or cancel the current timer first.');
 
-  const db = await getDatabase();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.execute(
-    `INSERT INTO timer_sessions
-      (id, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded)
-     VALUES ($1, $2, $3, $4, NULL, 0, 'running', 0)`,
-    [id, category, difficulty, now],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `INSERT INTO timer_sessions
+        (id, category, difficulty, started_at, ended_at, elapsed_seconds, status, exp_awarded)
+       VALUES ($1, $2, $3, $4, NULL, 0, 'running', 0)`,
+      [id, category, difficulty, now],
+    );
+  });
 
   return {
     id,
@@ -109,51 +110,56 @@ export async function startTimer(category: TimerCategory, difficulty: Difficulty
 }
 
 export async function checkpointTimer(id: string, elapsedSeconds: number): Promise<void> {
-  const db = await getDatabase();
-  await db.execute(
-    `UPDATE timer_sessions SET elapsed_seconds = $2 WHERE id = $1 AND status IN ('running', 'paused')`,
-    [id, Math.max(0, Math.floor(elapsedSeconds))],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE timer_sessions SET elapsed_seconds = $2 WHERE id = $1 AND status IN ('running', 'paused')`,
+      [id, Math.max(0, Math.floor(elapsedSeconds))],
+    );
+  });
 }
 
 export async function pauseTimer(id: string, elapsedSeconds: number): Promise<void> {
-  const db = await getDatabase();
-  await db.execute(
-    `UPDATE timer_sessions SET status = 'paused', elapsed_seconds = $2 WHERE id = $1 AND status = 'running'`,
-    [id, Math.max(0, Math.floor(elapsedSeconds))],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE timer_sessions SET status = 'paused', elapsed_seconds = $2 WHERE id = $1 AND status = 'running'`,
+      [id, Math.max(0, Math.floor(elapsedSeconds))],
+    );
+  });
 }
 
 export async function resumeTimer(id: string): Promise<void> {
-  const db = await getDatabase();
-  await db.execute(
-    `UPDATE timer_sessions SET status = 'running', started_at = $2 WHERE id = $1 AND status = 'paused'`,
-    [id, new Date().toISOString()],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE timer_sessions SET status = 'running', started_at = $2 WHERE id = $1 AND status = 'paused'`,
+      [id, new Date().toISOString()],
+    );
+  });
 }
 
 export async function cancelTimer(id: string, elapsedSeconds: number): Promise<void> {
-  const db = await getDatabase();
-  await db.execute(
-    `UPDATE timer_sessions
-     SET status = 'cancelled', elapsed_seconds = $2, ended_at = $3
-     WHERE id = $1 AND status IN ('running', 'paused')`,
-    [id, Math.max(0, Math.floor(elapsedSeconds)), new Date().toISOString()],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE timer_sessions
+       SET status = 'cancelled', elapsed_seconds = $2, ended_at = $3
+       WHERE id = $1 AND status IN ('running', 'paused')`,
+      [id, Math.max(0, Math.floor(elapsedSeconds)), new Date().toISOString()],
+    );
+  });
 }
 
 export async function completeTimer(session: TimerSession, elapsedSeconds: number): Promise<number> {
-  const db = await getDatabase();
   const finalElapsed = Math.max(0, Math.floor(elapsedSeconds));
   const reward = calculateTimerExperience(finalElapsed, session.difficulty);
   const endedAt = new Date();
 
-  await db.execute(
-    `UPDATE timer_sessions
-     SET status = 'completed', elapsed_seconds = $2, ended_at = $3, exp_awarded = $4
-     WHERE id = $1 AND status IN ('running', 'paused')`,
-    [session.id, finalElapsed, endedAt.toISOString(), reward],
-  );
+  await runDatabaseWrite(async (db) => {
+    await db.execute(
+      `UPDATE timer_sessions
+       SET status = 'completed', elapsed_seconds = $2, ended_at = $3, exp_awarded = $4
+       WHERE id = $1 AND status IN ('running', 'paused')`,
+      [session.id, finalElapsed, endedAt.toISOString(), reward],
+    );
+  });
 
   if (reward > 0) {
     await grantExperience({
