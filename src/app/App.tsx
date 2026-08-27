@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns';
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -173,6 +173,17 @@ export function App() {
     }
   }
 
+  function updatePointerHighlight(event: ReactPointerEvent<HTMLElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    event.currentTarget.style.setProperty('--pointer-x', `${event.clientX - rect.left}px`);
+    event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - rect.top}px`);
+    event.currentTarget.style.setProperty('--pointer-opacity', '1');
+  }
+
+  function hidePointerHighlight(event: ReactPointerEvent<HTMLElement>) {
+    event.currentTarget.style.setProperty('--pointer-opacity', '0');
+  }
+
   async function submitTodo(event: FormEvent) {
     event.preventDefault();
     if (!todoTitle.trim()) return;
@@ -271,13 +282,18 @@ export function App() {
   const persistentTodos = todos.filter((task) => task.taskType === 'persistent');
 
   return (
-    <main className={`widget-shell ${expanded ? 'widget-shell--expanded' : ''}`}>
+    <main
+      className={`widget-shell ${expanded ? 'widget-shell--expanded' : ''}`}
+      onPointerMove={updatePointerHighlight}
+      onPointerLeave={hidePointerHighlight}
+    >
       <section className={`glass-card widget-card ${expanded ? 'widget-card--expanded' : ''}`}>
-        <div className="window-chrome" data-tauri-drag-region>
+        <div className="window-chrome">
           <div className="window-chrome__brand" data-tauri-drag-region>
             <span className="window-chrome__mark" aria-hidden="true">D</span>
             <span data-tauri-drag-region>Dayforge</span>
           </div>
+          <div className="window-chrome__drag-spacer" data-tauri-drag-region aria-hidden="true" />
           <div className="window-chrome__actions">
             <button type="button" aria-label="Minimize Dayforge" title="Minimize" onClick={() => void minimizeWindow()}>
               <Minus size={14} strokeWidth={1.8} />
