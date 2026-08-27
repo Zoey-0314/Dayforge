@@ -1,0 +1,110 @@
+html,
+body,
+#root {
+  background: transparent !important;
+}
+
+/* Keep the webview itself visually borderless. The rounded glass card is the
+   only visible surface; the window no longer gets a second outer frame. */
+.widget-shell,
+.widget-shell--expanded {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.widget-card,
+.widget-card--expanded {
+  isolation: isolate;
+  border: 0 !important;
+  border-radius: 26px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(89, 154, 216, 0.06) !important;
+}
+
+.widget-card--expanded {
+  border-radius: 28px;
+}
+
+/* Reserve a real, dedicated chrome row. Nothing in the feature grid may
+   paint above or through this row. */
+.window-chrome {
+  position: relative !important;
+  z-index: 1000 !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
+  margin: 0 0 10px !important;
+  padding: 2px 4px 2px 8px !important;
+  overflow: visible !important;
+}
+
+.window-chrome__brand {
+  position: relative;
+  z-index: 1001;
+  flex: 0 0 auto;
+}
+
+.window-chrome__drag-spacer {
+  position: relative;
+  z-index: 1000;
+  align-self: stretch;
+  min-width: 24px;
+}
+
+.window-chrome__actions {
+  position: relative !important;
+  z-index: 1100 !important;
+  flex: 0 0 auto;
+  pointer-events: auto !important;
+  isolation: isolate;
+  background: rgba(8, 22, 40, 0.10) !important;
+}
+
+.window-chrome__actions button {
+  position: relative !important;
+  z-index: 1101 !important;
+  pointer-events: auto !important;
+}
+
+.level-strip {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  cursor: default !important;
+}
+
+.expanded-grid,
+.compact-layout {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.expanded-grid > *,
+.compact-layout > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The duplicate expanded quick-controls used to sit at the same top-right
+   coordinates as the window buttons. Keep it disabled even if re-mounted by
+   an older cached bundle during development. */
+.desktop-quick-controls {
+  display: none !important;
+}
+
+/* Preserve the pointer-following glass highlight without allowing it to
+   intercept form controls. */
+.widget-card::after,
+.widget-card::before {
+  pointer-events: none !important;
+}
+
+input,
+select,
+button,
+textarea {
+  position: relative;
+  z-index: 2;
+}
