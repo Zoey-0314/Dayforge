@@ -21,15 +21,23 @@ body,
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
-button {
+button,
+select,
+input {
   color: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
 .widget-shell {
+  position: relative;
   width: 100%;
   height: 100%;
   padding: 12px;
@@ -38,7 +46,12 @@ button {
     radial-gradient(circle at 82% 88%, rgba(21, 67, 172, 0.18), transparent 34%);
 }
 
-.glass-card {
+.widget-shell--expanded {
+  padding: 14px;
+}
+
+.glass-card,
+.feature-panel {
   border: 1px solid rgba(208, 239, 245, 0.28);
   background: linear-gradient(145deg, rgba(15, 34, 65, 0.74), rgba(20, 48, 88, 0.58));
   box-shadow:
@@ -56,6 +69,11 @@ button {
   border-radius: 28px;
   padding: 16px;
   user-select: none;
+}
+
+.widget-card--expanded {
+  border-radius: 30px;
+  padding: 18px;
 }
 
 .level-strip {
@@ -102,11 +120,47 @@ button {
   transition: width 220ms ease;
 }
 
-.heatmap-header {
+.compact-layout,
+.expanded-grid {
+  min-height: 0;
+  flex: 1;
+}
+
+.compact-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.expanded-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.activity-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.expanded-grid .activity-panel {
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(168, 216, 249, 0.12);
+  background: rgba(8, 27, 54, 0.24);
+}
+
+.heatmap-header,
+.panel-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 12px;
+}
+
+.heatmap-header {
   margin-top: 4px;
 }
 
@@ -118,11 +172,34 @@ button {
   letter-spacing: 0.20em;
 }
 
-h1 {
-  margin: 0;
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2 {
+  margin-bottom: 0;
   color: #f5fbff;
+}
+
+h1 {
   font-size: 20px;
   line-height: 1;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+h3 {
+  margin-bottom: 8px;
+  color: rgba(208, 239, 245, 0.66);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .segmented {
@@ -140,7 +217,6 @@ h1 {
   background: transparent;
   color: rgba(208, 239, 245, 0.52);
   font-size: 9px;
-  cursor: pointer;
 }
 
 .segmented button.is-active {
@@ -191,7 +267,8 @@ h1 {
 .heatmap__cell--4 { background: rgba(30, 123, 211, 0.92); }
 .heatmap__cell--5 { background: #1543ac; }
 
-.status-message {
+.status-message,
+.empty-state {
   color: rgba(208, 239, 245, 0.60);
   font-size: 11px;
 }
@@ -223,6 +300,221 @@ h1 {
   line-height: 1;
 }
 
-.expand-button:disabled {
-  opacity: 0.45;
+.feature-panel {
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.panel-note {
+  color: rgba(208, 239, 245, 0.42);
+  font-size: 9px;
+}
+
+.quick-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px 82px 54px;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.quick-form--habit {
+  grid-template-columns: minmax(0, 1fr) 82px 54px;
+}
+
+.quick-form input,
+.quick-form select,
+.quick-form button {
+  min-width: 0;
+  height: 30px;
+  border: 1px solid rgba(168, 216, 249, 0.14);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(4, 18, 39, 0.32);
+  font-size: 10px;
+}
+
+.quick-form input,
+.quick-form select {
+  padding: 0 9px;
+}
+
+.quick-form input::placeholder {
+  color: rgba(208, 239, 245, 0.34);
+}
+
+.quick-form button {
+  background: rgba(37, 93, 186, 0.34);
+  color: #d0eff5;
+  font-weight: 700;
+}
+
+.task-section {
+  margin-top: 13px;
+}
+
+.task-list,
+.habit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 112px;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.task-row,
+.habit-row {
+  width: 100%;
+  border: 1px solid rgba(168, 216, 249, 0.10);
+  border-radius: 11px;
+  background: rgba(7, 24, 48, 0.26);
+}
+
+.task-row {
+  min-height: 33px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.task-checkbox {
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(168, 216, 249, 0.30);
+  border-radius: 5px;
+  color: #d0eff5;
+  font-size: 10px;
+}
+
+.task-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.task-row.is-complete {
+  opacity: 0.48;
+}
+
+.task-row.is-complete .task-row__title {
+  text-decoration: line-through;
+}
+
+.difficulty {
+  border-radius: 999px;
+  padding: 3px 6px;
+  font-size: 8px;
+  text-transform: capitalize;
+}
+
+.difficulty--easy { background: rgba(168, 216, 249, 0.12); color: #d0eff5; }
+.difficulty--medium { background: rgba(79, 169, 235, 0.18); color: #a8d8f9; }
+.difficulty--hard { background: rgba(21, 67, 172, 0.28); color: #d0eff5; }
+
+.habit-list {
+  margin-top: 13px;
+  max-height: 226px;
+}
+
+.habit-row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.habit-row:hover,
+.task-row:not(:disabled):hover {
+  background: rgba(30, 123, 211, 0.14);
+}
+
+.habit-row__main,
+.habit-row__count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.habit-row__main {
+  min-width: 0;
+}
+
+.habit-row__main strong,
+.habit-row__count strong {
+  font-size: 10px;
+}
+
+.habit-row__main small,
+.habit-row__count small {
+  color: rgba(208, 239, 245, 0.42);
+  font-size: 8px;
+}
+
+.habit-row__count {
+  align-items: flex-end;
+}
+
+.coming-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.coming-copy {
+  max-width: 320px;
+  margin: 18px 0;
+  color: rgba(208, 239, 245, 0.50);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.persistence-badge {
+  align-self: flex-start;
+  border: 1px solid rgba(79, 169, 235, 0.18);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(79, 169, 235, 0.10);
+  color: #a8d8f9;
+  font-size: 9px;
+}
+
+.empty-state {
+  padding: 10px 4px;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 10;
+  transform: translateX(-50%);
+  border: 1px solid rgba(208, 239, 245, 0.18);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(8, 26, 52, 0.90);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  color: #d0eff5;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(168, 216, 249, 0.16);
 }
