@@ -9,13 +9,21 @@ export type DailyExperienceRow = {
 
 export function getDatabase(): Promise<Database> {
   if (!databasePromise) {
-    databasePromise = Database.load('sqlite:dayforge.db').then(async (db) => {
-      await migrate(db);
-      return db;
+    databasePromise = openDatabase().catch((error) => {
+      databasePromise = null;
+      throw error;
     });
   }
 
   return databasePromise;
+}
+
+async function openDatabase(): Promise<Database> {
+  const db = await Database.load('sqlite:dayforge.db');
+  await db.execute('PRAGMA foreign_keys = ON');
+  await db.execute('PRAGMA journal_mode = WAL');
+  await migrate(db);
+  return db;
 }
 
 async function migrate(db: Database): Promise<void> {
