@@ -27,9 +27,6 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
         ) -> i32;
     }
 
-    // Let the transparent WebView stay rectangular and let CSS own the only
-    // visible rounded mask. A second DWM rounding radius creates tiny corner
-    // seams because Windows' system radius cannot exactly match our 25px glass.
     const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
     const DWMWA_BORDER_COLOR: i32 = 34;
     const DWMWCP_DONOTROUND: u32 = 1;
@@ -54,8 +51,69 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn apply_rounded_window_region(window: &tauri::WebviewWindow) {
+    use std::ffi::c_void;
+
+    #[link(name = "gdi32")]
+    extern "system" {
+        fn CreateRoundRectRgn(
+            left: i32,
+            top: i32,
+            right: i32,
+            bottom: i32,
+            ellipse_width: i32,
+            ellipse_height: i32,
+        ) -> *mut c_void;
+        fn DeleteObject(object: *mut c_void) -> i32;
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowRgn(hwnd: *mut c_void, region: *mut c_void, redraw: i32) -> i32;
+    }
+
+    let Ok(hwnd) = window.hwnd() else { return; };
+    let Ok(size) = window.inner_size() else { return; };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let radius = (25.0 * scale).round().max(1.0) as i32;
+    let diameter = radius * 2;
+
+    unsafe {
+        let region = CreateRoundRectRgn(
+            0,
+            0,
+            size.width as i32 + 1,
+            size.height as i32 + 1,
+            diameter,
+            diameter,
+        );
+        if region.is_null() {
+            return;
+        }
+
+        if SetWindowRgn(hwnd.0 as *mut c_void, region, 1) == 0 {
+            let _ = DeleteObject(region);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn apply_native_frost(window: &tauri::WebviewWindow) {
+    // The acrylic layer is the actual desktop-background blur. Keep its tint
+    // very light and neutral; the web UI draws only clear white glass on top.
+    let _ = window_vibrancy::apply_acrylic(window, Some((255, 255, 255, 22)));
+    apply_rounded_window_region(window);
+}
+
 #[cfg(not(target_os = "windows"))]
 fn suppress_native_window_frame(_window: &tauri::WebviewWindow) {}
+
+#[cfg(not(target_os = "windows"))]
+fn apply_native_frost(_window: &tauri::WebviewWindow) {}
+
+#[cfg(not(target_os = "windows"))]
+fn apply_rounded_window_region(_window: &tauri::WebviewWindow) {}
 
 fn database_migrations() -> Vec<Migration> {
     vec![
@@ -192,12 +250,23 @@ pub fn run() {
                 let _ = window.set_decorations(false);
                 let _ = window.set_shadow(false);
                 suppress_native_window_frame(&window);
+                apply_native_frost(&window);
             }
 
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
+            if window.label() != "main" {
+                return;
+            }
+
+            if matches!(event, WindowEvent::Resized(_)) {
+                if let Some(webview) = window.app_handle().get_webview_window("main") {
+                    apply_rounded_window_region(&webview);
+                }
+            }
+
+            if matches!(event, WindowEvent::CloseRequested { .. }) {
                 window.app_handle().exit(0);
             }
         })
