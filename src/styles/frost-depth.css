@@ -1,46 +1,52 @@
-/* Native acrylic owns the real desktop blur. This last-loaded layer stays
-   deliberately clear: it adds only milky scattering, fine edge light and text
-   separation, never a black/gray backing plate. */
+/* Windows blur-behind owns the real desktop blur. This final layer stays
+   deliberately clear and neutral: it adds only milky scattering, fine edge
+   light and text separation, never a black/gray backing plate. */
 
 .widget-card,
 .widget-card--expanded {
-  border: 1px solid rgba(255, 255, 255, 0.30) !important;
+  border: 1px solid rgba(255, 255, 255, 0.36) !important;
   border-radius: 24px !important;
-  clip-path: inset(0 round 24px) !important;
+  clip-path: none !important;
   background:
-    radial-gradient(120% 76% at 10% -12%, rgba(255, 255, 255, 0.14), transparent 43%),
-    radial-gradient(84% 62% at 92% 108%, rgba(255, 255, 255, 0.045), transparent 58%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.022) 48%, rgba(255, 255, 255, 0.050)) !important;
-  backdrop-filter: blur(6px) saturate(108%) contrast(1.015) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(108%) contrast(1.015) !important;
+    radial-gradient(122% 78% at 10% -12%, rgba(255, 255, 255, 0.13), transparent 42%),
+    radial-gradient(78% 58% at 94% 108%, rgba(255, 255, 255, 0.040), transparent 60%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.014) 48%, rgba(255, 255, 255, 0.036)) !important;
+  backdrop-filter: blur(4px) saturate(108%) contrast(1.012) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(108%) contrast(1.012) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 1px 0 0 rgba(255, 255, 255, 0.20),
-    inset -1px 0 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.13),
-    inset 0 0 18px rgba(255, 255, 255, 0.070) !important;
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 1px 0 0 rgba(255, 255, 255, 0.27),
+    inset -1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 24px rgba(255, 255, 255, 0.080) !important;
 }
 
+/* A second hairline sits one pixel inside the native rounded region. The glow
+   spreads inward so it remains visible even though the HWND itself is clipped
+   exactly to the 24px rounded shape. */
 .widget-card::before {
-  inset: 0 !important;
-  border-radius: inherit !important;
+  inset: 1px !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 23px !important;
   background:
-    linear-gradient(118deg, rgba(255, 255, 255, 0.15), transparent 24%, transparent 72%, rgba(255, 255, 255, 0.050)),
-    radial-gradient(92% 40% at 48% -11%, rgba(255, 255, 255, 0.22), transparent 70%),
-    radial-gradient(36% 28% at 2% 4%, rgba(255, 255, 255, 0.16), transparent 76%),
-    radial-gradient(32% 26% at 99% 96%, rgba(255, 255, 255, 0.08), transparent 76%) !important;
+    linear-gradient(118deg, rgba(255, 255, 255, 0.17), transparent 23%, transparent 72%, rgba(255, 255, 255, 0.050)),
+    radial-gradient(94% 42% at 48% -12%, rgba(255, 255, 255, 0.24), transparent 68%),
+    radial-gradient(34% 26% at 2% 4%, rgba(255, 255, 255, 0.17), transparent 75%),
+    radial-gradient(30% 24% at 99% 96%, rgba(255, 255, 255, 0.085), transparent 76%) !important;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 0 22px rgba(255, 255, 255, 0.060) !important;
+    inset 0 0 12px rgba(255, 255, 255, 0.090),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    0 0 12px rgba(255, 255, 255, 0.075) !important;
   mix-blend-mode: screen !important;
-  opacity: 0.94 !important;
+  opacity: 0.96 !important;
 }
 
 .widget-card::after {
   background: radial-gradient(
-    72px circle at var(--pointer-x) var(--pointer-y),
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0.060) 34%,
+    70px circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.070) 34%,
     transparent 70%
   ) !important;
   mix-blend-mode: screen !important;
@@ -49,15 +55,15 @@
 .feature-panel,
 .expanded-grid .activity-panel {
   background:
-    radial-gradient(112% 68% at 8% -10%, rgba(255, 255, 255, 0.10), transparent 47%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.022) 55%, rgba(255, 255, 255, 0.040)) !important;
+    radial-gradient(112% 68% at 8% -10%, rgba(255, 255, 255, 0.085), transparent 47%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.050), rgba(255, 255, 255, 0.016) 55%, rgba(255, 255, 255, 0.032)) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
-  backdrop-filter: blur(6px) saturate(106%) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(106%) !important;
+  backdrop-filter: blur(5px) saturate(106%) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(106%) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
     inset 0 0 0 1px rgba(255, 255, 255, 0.030),
-    inset 0 0 12px rgba(255, 255, 255, 0.028) !important;
+    inset 0 0 12px rgba(255, 255, 255, 0.030) !important;
 }
 
 /* Controls remain clear white glass rather than dark plates. */
@@ -81,9 +87,11 @@
 .task-row,
 .habit-row,
 .timer-history-row {
-  background: rgba(255, 255, 255, 0.055) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.050) !important;
+  border-color: rgba(255, 255, 255, 0.17) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 0 8px rgba(255, 255, 255, 0.018) !important;
 }
 
 .quick-form input,
@@ -92,7 +100,7 @@
 .sleep-form input,
 .quick-form select,
 .timer-controls select {
-  background: rgba(255, 255, 255, 0.062) !important;
+  background: rgba(255, 255, 255, 0.056) !important;
 }
 
 .segmented button.is-active,
@@ -103,34 +111,35 @@
 .quick-form button:hover,
 .timer-actions button:hover,
 .sleep-form button:hover {
-  background: rgba(255, 255, 255, 0.13) !important;
-  border-color: rgba(255, 255, 255, 0.29) !important;
+  background: rgba(255, 255, 255, 0.125) !important;
+  border-color: rgba(255, 255, 255, 0.31) !important;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 0 12px rgba(255, 255, 255, 0.055),
+    0 0 8px rgba(255, 255, 255, 0.045) !important;
 }
 
 .timer-history-layer {
   background:
-    radial-gradient(120% 76% at 10% -10%, rgba(255, 255, 255, 0.14), transparent 46%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.055)) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
+    radial-gradient(120% 76% at 10% -10%, rgba(255, 255, 255, 0.13), transparent 46%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045)) !important;
+  border-color: rgba(255, 255, 255, 0.23) !important;
   backdrop-filter: blur(14px) saturate(108%) !important;
   -webkit-backdrop-filter: blur(14px) saturate(108%) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
     inset 0 0 18px rgba(255, 255, 255, 0.040) !important;
 }
 
 .toast {
-  background: rgba(255, 255, 255, 0.11) !important;
-  border-color: rgba(255, 255, 255, 0.23) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
   backdrop-filter: blur(16px) saturate(108%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(108%) !important;
 }
 
-/* The desktop is genuinely blurred underneath now, so text only needs a fine
-   dark separation shadow instead of a dark panel behind it. */
+/* The desktop is genuinely blurred underneath, so text only needs a fine dark
+   separation shadow rather than an opaque backing plate. */
 h1,
 h2,
 h3,
@@ -152,8 +161,8 @@ select,
 .empty-state,
 .status-message {
   text-shadow:
-    0 1px 2px rgba(7, 9, 12, 0.58),
-    0 0 7px rgba(7, 9, 12, 0.18) !important;
+    0 1px 2px rgba(7, 9, 12, 0.56),
+    0 0 7px rgba(7, 9, 12, 0.17) !important;
 }
 
 .level-strip__level {
@@ -172,14 +181,14 @@ select,
   z-index: 1500 !important;
   white-space: nowrap;
   pointer-events: none;
-  color: rgba(255, 255, 255, 0.94) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
   font-size: 8px !important;
   font-weight: 780 !important;
   letter-spacing: 0.035em;
   opacity: 0;
   animation: online-exp-level-rise 1.55s cubic-bezier(0.22, 0.72, 0.24, 1) both !important;
   text-shadow:
-    0 0 10px rgba(255, 255, 255, 0.28),
+    0 0 10px rgba(255, 255, 255, 0.30),
     0 1px 3px rgba(7, 9, 12, 0.66) !important;
 }
 

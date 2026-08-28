@@ -27,14 +27,12 @@ fn configure_native_window_surface(window: &tauri::WebviewWindow) {
         ) -> i32;
     }
 
-    // Let DWM keep the window in the supported undecorated path. Tauri on
-    // recent Windows builds can expose a native title bar when a transparent,
-    // undecorated window also disables its shadow. We therefore keep the
-    // native shadow path enabled, hide decorations, and remove only the DWM
-    // border color. The CSS surface supplies the visible edge light.
+    // The visible shape is owned by SetWindowRgn below. Disable DWM's own
+    // rounded-corner pass so Windows never draws a second, slightly different
+    // radius around the web surface.
     const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
     const DWMWA_BORDER_COLOR: i32 = 34;
-    const DWMWCP_ROUND: u32 = 2;
+    const DWMWCP_DONOTROUND: u32 = 1;
     const DWMWA_COLOR_NONE: u32 = 0xFFFF_FFFE;
 
     let Ok(hwnd) = window.hwnd() else { return; };
@@ -50,7 +48,7 @@ fn configure_native_window_surface(window: &tauri::WebviewWindow) {
         let _ = DwmSetWindowAttribute(
             raw_hwnd,
             DWMWA_WINDOW_CORNER_PREFERENCE,
-            &DWMWCP_ROUND as *const u32 as *const c_void,
+            &DWMWCP_DONOTROUND as *const u32 as *const c_void,
             size_of::<u32>() as u32,
         );
     }
@@ -59,14 +57,6 @@ fn configure_native_window_surface(window: &tauri::WebviewWindow) {
 #[cfg(target_os = "windows")]
 fn apply_rounded_window_region(window: &tauri::WebviewWindow) {
     use std::ffi::c_void;
-
-    #[repr(C)]
-    struct Rect {
-        left: i32,
-        top: i32,
-        right: i32,
-        bottom: i32,
-    }
 
     #[link(name = "gdi32")]
     extern "system" {
@@ -83,30 +73,29 @@ fn apply_rounded_window_region(window: &tauri::WebviewWindow) {
 
     #[link(name = "user32")]
     extern "system" {
-        fn GetClientRect(hwnd: *mut c_void, rect: *mut Rect) -> i32;
         fn SetWindowRgn(hwnd: *mut c_void, region: *mut c_void, redraw: i32) -> i32;
     }
 
     let Ok(hwnd) = window.hwnd() else { return; };
-    let raw_hwnd = hwnd.0 as *mut c_void;
+    let Ok(size) = window.inner_size() else { return; };
     let scale = window.scale_factor().unwrap_or(1.0);
     let radius = (24.0 * scale).round().max(1.0) as i32;
     let diameter = radius * 2;
 
     unsafe {
-        let mut rect = Rect { left: 0, top: 0, right: 0, bottom: 0 };
-        if GetClientRect(raw_hwnd, &mut rect) == 0 {
-            return;
-        }
-
-        let width = (rect.right - rect.left).max(1);
-        let height = (rect.bottom - rect.top).max(1);
-        let region = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
+        let region = CreateRoundRectRgn(
+            0,
+            0,
+            size.width as i32 + 1,
+            size.height as i32 + 1,
+            diameter,
+            diameter,
+        );
         if region.is_null() {
             return;
         }
 
-        if SetWindowRgn(raw_hwnd, region, 1) == 0 {
+        if SetWindowRgn(hwnd.0 as *mut c_void, region, 1) == 0 {
             let _ = DeleteObject(region);
         }
     }
@@ -114,17 +103,22 @@ fn apply_rounded_window_region(window: &tauri::WebviewWindow) {
 
 #[cfg(target_os = "windows")]
 fn apply_native_frost(window: &tauri::WebviewWindow) {
-    // Acrylic owns the real desktop blur. Keep the tint nearly transparent so
-    // the material reads as clear glass rather than a white/gray plate.
-    let _ = window_vibrancy::apply_acrylic(window, Some((255, 255, 255, 8)));
-
-    // Reassert the supported undecorated state after the backdrop is attached.
-    // Keep shadow enabled: on current Tauri/Windows combinations, the
-    // decorations=false + transparent=true + shadow=false combination can
-    // reveal a native title bar.
+    // IMPORTANT: do not use apply_acrylic here on modern Windows 11.
+    // window-vibrancy maps acrylic to DWMWA_SYSTEMBACKDROP_TYPE there, which
+    // asks DWM to create a transient-window backdrop/non-client surface. On
+    // this tiny transparent widget that surfaced as an extra title bar and a
+    // second rectangular layer around the custom React chrome.
+    //
+    // Blur-behind uses SetWindowCompositionAttribute instead, so the real
+    // desktop is still blurred without creating that second native surface.
     let _ = window.set_decorations(false);
-    let _ = window.set_shadow(true);
+    let _ = window.set_shadow(false);
+    let _ = window_vibrancy::clear_acrylic(window);
+    let _ = window_vibrancy::clear_blur(window);
+
     configure_native_window_surface(window);
+    apply_rounded_window_region(window);
+    let _ = window_vibrancy::apply_blur(window, None);
     apply_rounded_window_region(window);
 }
 
@@ -269,8 +263,6 @@ pub fn run() {
             ))?;
 
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_decorations(false);
-                let _ = window.set_shadow(true);
                 apply_native_frost(&window);
             }
 
