@@ -1,11 +1,10 @@
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-// The native window now matches the visible glass exactly. Windows owns the
-// real acrylic blur and a matching rounded region, so there is no transparent
-// gutter outside the card.
-const COMPACT_SIZE = { width: 320, height: 320 };
-const EXPANDED_SIZE = { width: 980, height: 680 };
+// The native window includes an 8px transparent gutter around the visible
+// glass. The visible glass itself stays 320x320 compact and 980x680 expanded.
+const COMPACT_SIZE = { width: 336, height: 336 };
+const EXPANDED_SIZE = { width: 996, height: 696 };
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
