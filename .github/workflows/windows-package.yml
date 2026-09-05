@@ -27,6 +27,46 @@ jobs:
       - name: Generate platform icons
         run: npm run tauri icon src-tauri/icons/dayforge.svg
 
+      - name: Prepare fixed WebView2 Runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '151.0.4129.93'
+          $expectedSha256 = '1cb7106545f5aee92ee16496347a0e775a351cb5a3816d072f04323695899bde'
+          $cab = Join-Path $env:RUNNER_TEMP 'Microsoft.WebView2.FixedVersionRuntime.x64.cab'
+          $extractRoot = Join-Path $env:GITHUB_WORKSPACE 'src-tauri\WebView2FixedExtract'
+          $fixedRoot = Join-Path $env:GITHUB_WORKSPACE 'src-tauri\FixedWebView2'
+          $url = "https://github.com/libnyanpasu/webview2-runtime-archive/releases/download/$version/Microsoft.WebView2.FixedVersionRuntime.x64.cab"
+
+          Invoke-WebRequest -Uri $url -OutFile $cab
+          $actualSha256 = (Get-FileHash -Algorithm SHA256 $cab).Hash.ToLowerInvariant()
+          if ($actualSha256 -ne $expectedSha256) {
+            throw "WebView2 Fixed Runtime checksum mismatch. Expected $expectedSha256, got $actualSha256."
+          }
+
+          Remove-Item $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $fixedRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $extractRoot | Out-Null
+          New-Item -ItemType Directory -Path $fixedRoot | Out-Null
+
+          & expand.exe $cab -F:* $extractRoot | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to expand WebView2 Fixed Runtime cabinet."
+          }
+
+          $runtimeExe = Get-ChildItem $extractRoot -Recurse -File -Filter 'msedgewebview2.exe' | Select-Object -First 1
+          if (-not $runtimeExe) {
+            throw "msedgewebview2.exe was not found after extracting the fixed runtime."
+          }
+
+          Copy-Item -Path (Join-Path $runtimeExe.Directory.FullName '*') -Destination $fixedRoot -Recurse -Force
+          if (-not (Test-Path (Join-Path $fixedRoot 'msedgewebview2.exe'))) {
+            throw "FixedWebView2 was not prepared correctly."
+          }
+
+          Remove-Item $extractRoot -Recurse -Force
+          Write-Host "Prepared WebView2 Fixed Runtime $version from verified archive asset."
+
       - name: Build Dayforge installer
         run: npm run tauri build
 
