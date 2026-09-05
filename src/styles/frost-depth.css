@@ -1,34 +1,49 @@
-/* Thicker neutral frost. This layer intentionally adds no black/gray tint to
-   the glass itself: the wallpaper remains the color source, while stronger
-   blur and milky white scattering keep text readable across bright desktops. */
+/* Neutral readability pass. Keep Dayforge's existing UI colors unchanged;
+   only strengthen the glass material, background separation and edge light. */
 
 .widget-card,
 .widget-card--expanded {
   background:
-    radial-gradient(120% 82% at 8% -9%, rgba(255, 255, 255, 0.30), transparent 46%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.15) 46%, rgba(255, 255, 255, 0.19)) !important;
-  backdrop-filter: blur(44px) saturate(118%) contrast(1.05) !important;
-  -webkit-backdrop-filter: blur(44px) saturate(118%) contrast(1.05) !important;
+    radial-gradient(120% 82% at 8% -9%, rgba(255, 255, 255, 0.16), transparent 46%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.065) 46%, rgba(255, 255, 255, 0.085)) !important;
+  backdrop-filter: blur(58px) saturate(108%) brightness(0.72) contrast(1.10) !important;
+  -webkit-backdrop-filter: blur(58px) saturate(108%) brightness(0.72) contrast(1.10) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.46),
-    inset 1px 0 0 rgba(255, 255, 255, 0.13),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset -1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Add fine, colorless optical scatter so bright wallpaper detail cannot cut
+   through the card as sharply. This changes material density, not UI colors. */
+.widget-card::before {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,.10) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 73% 38%, rgba(255,255,255,.065) 0 1px, transparent 1.4px),
+    radial-gradient(120% 76% at 10% -12%, rgba(255,255,255,.12), transparent 48%),
+    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.012)) !important;
+  background-size: 7px 7px, 9px 9px, auto, auto !important;
+  opacity: .72;
+  mix-blend-mode: screen !important;
 }
 
 .feature-panel,
 .expanded-grid .activity-panel {
   background:
-    radial-gradient(116% 72% at 10% -12%, rgba(255, 255, 255, 0.20), transparent 48%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.09) 55%, rgba(255, 255, 255, 0.12)) !important;
+    radial-gradient(116% 72% at 10% -12%, rgba(255, 255, 255, 0.13), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.05) 55%, rgba(255, 255, 255, 0.07)) !important;
   border-color: rgba(255, 255, 255, 0.20) !important;
-  backdrop-filter: blur(30px) saturate(114%) contrast(1.04) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(114%) contrast(1.04) !important;
+  backdrop-filter: blur(38px) saturate(106%) brightness(0.76) contrast(1.08) !important;
+  -webkit-backdrop-filter: blur(38px) saturate(106%) brightness(0.76) contrast(1.08) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045) !important;
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 1px 10px rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Controls stay neutral/transparent instead of introducing dark panels. */
+/* Controls keep their exact existing color palette. Only separation/shadow is
+   strengthened so their boundaries remain visible over pale wallpaper. */
 .window-chrome__mark,
 .window-chrome__actions,
 .segmented,
@@ -51,6 +66,9 @@
 .timer-history-row {
   background: rgba(255, 255, 255, 0.085) !important;
   border-color: rgba(255, 255, 255, 0.17) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 1px 5px rgba(0,0,0,.10);
 }
 
 .quick-form input,
@@ -75,21 +93,21 @@
 
 .timer-history-layer {
   background:
-    radial-gradient(120% 76% at 10% -10%, rgba(255, 255, 255, 0.28), transparent 46%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.15)) !important;
+    radial-gradient(120% 76% at 10% -10%, rgba(255, 255, 255, 0.18), transparent 46%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.075)) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(40px) saturate(116%) contrast(1.05) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(116%) contrast(1.05) !important;
+  backdrop-filter: blur(48px) saturate(108%) brightness(0.74) contrast(1.08) !important;
+  -webkit-backdrop-filter: blur(48px) saturate(108%) brightness(0.74) contrast(1.08) !important;
 }
 
 .toast {
   background: rgba(255, 255, 255, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(28px) saturate(116%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(116%) !important;
+  backdrop-filter: blur(32px) saturate(108%) brightness(.78) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(108%) brightness(.78) !important;
 }
 
-/* Stronger text separation is done with shadow, not a dark glass tint. */
+/* Preserve every foreground color; increase only luminance separation. */
 h1,
 h2,
 h3,
@@ -111,8 +129,21 @@ select,
 .empty-state,
 .status-message {
   text-shadow:
-    0 1px 2px rgba(8, 10, 14, 0.70),
-    0 0 10px rgba(8, 10, 14, 0.34) !important;
+    0 1px 1px rgba(5, 7, 10, 0.82),
+    0 2px 8px rgba(5, 7, 10, 0.48),
+    0 0 14px rgba(5, 7, 10, 0.20) !important;
+}
+
+.heatmap__cell {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    0 1px 4px rgba(0,0,0,.12) !important;
+}
+
+.level-strip__track {
+  box-shadow:
+    inset 0 1px 2px rgba(0,0,0,.16),
+    0 1px 4px rgba(0,0,0,.08) !important;
 }
 
 .level-strip__level {
