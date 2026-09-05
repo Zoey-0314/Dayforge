@@ -27,9 +27,6 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
         ) -> i32;
     }
 
-    // Let the transparent WebView stay rectangular and let CSS own the only
-    // visible rounded mask. A second DWM rounding radius creates tiny corner
-    // seams because Windows' system radius cannot exactly match our 25px glass.
     const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
     const DWMWA_BORDER_COLOR: i32 = 34;
     const DWMWCP_DONOTROUND: u32 = 1;
@@ -54,8 +51,68 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn clip_native_window_to_glass(window: &tauri::WebviewWindow) {
+    use std::ffi::c_void;
+
+    #[link(name = "gdi32")]
+    extern "system" {
+        fn CreateRoundRectRgn(
+            left: i32,
+            top: i32,
+            right: i32,
+            bottom: i32,
+            width_ellipse: i32,
+            height_ellipse: i32,
+        ) -> *mut c_void;
+        fn DeleteObject(object: *mut c_void) -> i32;
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowRgn(hwnd: *mut c_void, region: *mut c_void, redraw: i32) -> i32;
+    }
+
+    let Ok(hwnd) = window.hwnd() else { return; };
+    let Ok(size) = window.inner_size() else { return; };
+    let Ok(scale) = window.scale_factor() else { return; };
+
+    let logical_width = size.width as f64 / scale;
+    let radius_logical = if logical_width <= 336.0 {
+        24.0
+    } else if logical_width >= 996.0 {
+        26.0
+    } else {
+        24.0 + 2.0 * ((logical_width - 336.0) / (996.0 - 336.0))
+    };
+    let ellipse = (radius_logical * 2.0 * scale).round().max(1.0) as i32;
+
+    unsafe {
+        let region = CreateRoundRectRgn(
+            0,
+            0,
+            size.width as i32 + 1,
+            size.height as i32 + 1,
+            ellipse,
+            ellipse,
+        );
+        if region.is_null() {
+            return;
+        }
+
+        // After a successful SetWindowRgn call Windows owns the HRGN. Only
+        // delete it ourselves when the call fails.
+        if SetWindowRgn(hwnd.0 as *mut c_void, region, 1) == 0 {
+            let _ = DeleteObject(region);
+        }
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 fn suppress_native_window_frame(_window: &tauri::WebviewWindow) {}
+
+#[cfg(not(target_os = "windows"))]
+fn clip_native_window_to_glass(_window: &tauri::WebviewWindow) {}
 
 fn database_migrations() -> Vec<Migration> {
     vec![
@@ -192,12 +249,24 @@ pub fn run() {
                 let _ = window.set_decorations(false);
                 let _ = window.set_shadow(false);
                 suppress_native_window_frame(&window);
+                clip_native_window_to_glass(&window);
             }
 
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
+            if window.label() != "main" {
+                return;
+            }
+
+            #[cfg(target_os = "windows")]
+            if matches!(event, WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }) {
+                if let Some(webview_window) = window.app_handle().get_webview_window("main") {
+                    clip_native_window_to_glass(&webview_window);
+                }
+            }
+
+            if matches!(event, WindowEvent::CloseRequested { .. }) {
                 window.app_handle().exit(0);
             }
         })

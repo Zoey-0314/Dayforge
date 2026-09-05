@@ -1,49 +1,53 @@
-/* Neutral readability pass. Keep Dayforge's existing UI colors unchanged;
-   only strengthen the glass material, background separation and edge light. */
+/* Vision-style neutral frosted glass.
+   The desktop blur itself now comes from Tauri's native Acrylic window effect.
+   This layer only adds a restrained milky scatter, optical edge light and
+   contrast support. It deliberately does not recolor Dayforge's UI palette. */
 
 .widget-card,
 .widget-card--expanded {
   background:
-    radial-gradient(120% 82% at 8% -9%, rgba(255, 255, 255, 0.16), transparent 46%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.065) 46%, rgba(255, 255, 255, 0.085)) !important;
-  backdrop-filter: blur(58px) saturate(108%) brightness(0.72) contrast(1.10) !important;
-  -webkit-backdrop-filter: blur(58px) saturate(108%) brightness(0.72) contrast(1.10) !important;
+    radial-gradient(115% 78% at 8% -8%, rgba(255, 255, 255, 0.19), transparent 45%),
+    radial-gradient(76% 54% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 66%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.135), rgba(255, 255, 255, 0.085) 48%, rgba(255, 255, 255, 0.105)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.48),
-    inset 1px 0 0 rgba(255, 255, 255, 0.16),
-    inset -1px 0 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
+    inset 0 0 0 1px rgba(255, 255, 255, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset -1px 0 0 rgba(255, 255, 255, 0.11),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 0 24px rgba(255, 255, 255, 0.055) !important;
 }
 
-/* Add fine, colorless optical scatter so bright wallpaper detail cannot cut
-   through the card as sharply. This changes material density, not UI colors. */
+/* Smooth optical scattering only: no dot/noise texture. */
 .widget-card::before {
   background:
-    radial-gradient(circle at 18% 16%, rgba(255,255,255,.10) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 73% 38%, rgba(255,255,255,.065) 0 1px, transparent 1.4px),
-    radial-gradient(120% 76% at 10% -12%, rgba(255,255,255,.12), transparent 48%),
-    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.012)) !important;
-  background-size: 7px 7px, 9px 9px, auto, auto !important;
-  opacity: .72;
+    radial-gradient(85% 52% at 16% -4%, rgba(255, 255, 255, 0.24), transparent 58%),
+    radial-gradient(62% 42% at 92% 96%, rgba(255, 255, 255, 0.075), transparent 72%),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.075), transparent 32%, rgba(255, 255, 255, 0.018) 68%, rgba(255, 255, 255, 0.06)) !important;
+  opacity: 0.76;
   mix-blend-mode: screen !important;
 }
 
+/* The smaller cards remain translucent and softly blur the already-frosted
+   native surface beneath them, creating the layered Vision Pro look. */
 .feature-panel,
 .expanded-grid .activity-panel {
   background:
-    radial-gradient(116% 72% at 10% -12%, rgba(255, 255, 255, 0.13), transparent 48%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.05) 55%, rgba(255, 255, 255, 0.07)) !important;
+    radial-gradient(112% 68% at 10% -10%, rgba(255, 255, 255, 0.14), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.060) 54%, rgba(255, 255, 255, 0.080)) !important;
   border-color: rgba(255, 255, 255, 0.20) !important;
-  backdrop-filter: blur(38px) saturate(106%) brightness(0.76) contrast(1.08) !important;
-  -webkit-backdrop-filter: blur(38px) saturate(106%) brightness(0.76) contrast(1.08) !important;
+  backdrop-filter: blur(18px) saturate(106%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(106%) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.31),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
-    0 1px 10px rgba(0, 0, 0, 0.06) !important;
+    0 1px 9px rgba(0, 0, 0, 0.055) !important;
 }
 
-/* Controls keep their exact existing color palette. Only separation/shadow is
-   strengthened so their boundaries remain visible over pale wallpaper. */
+/* Keep the existing control colors exactly in the neutral/transparent family.
+   Only depth and boundary separation are reinforced. */
 .window-chrome__mark,
 .window-chrome__actions,
 .segmented,
@@ -67,8 +71,8 @@
   background: rgba(255, 255, 255, 0.085) !important;
   border-color: rgba(255, 255, 255, 0.17) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    0 1px 5px rgba(0,0,0,.10);
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 1px 5px rgba(0, 0, 0, 0.095);
 }
 
 .quick-form input,
@@ -93,21 +97,25 @@
 
 .timer-history-layer {
   background:
-    radial-gradient(120% 76% at 10% -10%, rgba(255, 255, 255, 0.18), transparent 46%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.075)) !important;
+    radial-gradient(118% 74% at 10% -10%, rgba(255, 255, 255, 0.19), transparent 46%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.145), rgba(255, 255, 255, 0.085)) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(48px) saturate(108%) brightness(0.74) contrast(1.08) !important;
-  -webkit-backdrop-filter: blur(48px) saturate(108%) brightness(0.74) contrast(1.08) !important;
+  backdrop-filter: blur(24px) saturate(106%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(106%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 0 0 1px rgba(255,255,255,.045) !important;
 }
 
 .toast {
   background: rgba(255, 255, 255, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(32px) saturate(108%) brightness(.78) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(108%) brightness(.78) !important;
+  backdrop-filter: blur(20px) saturate(108%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(108%) !important;
 }
 
-/* Preserve every foreground color; increase only luminance separation. */
+/* Foreground colors stay untouched. Dark optical separation keeps white text
+   legible even when the blurred wallpaper underneath is very bright. */
 h1,
 h2,
 h3,
@@ -129,21 +137,21 @@ select,
 .empty-state,
 .status-message {
   text-shadow:
-    0 1px 1px rgba(5, 7, 10, 0.82),
-    0 2px 8px rgba(5, 7, 10, 0.48),
-    0 0 14px rgba(5, 7, 10, 0.20) !important;
+    0 1px 2px rgba(5, 7, 10, 0.78),
+    0 3px 10px rgba(5, 7, 10, 0.34),
+    0 0 18px rgba(5, 7, 10, 0.14) !important;
 }
 
 .heatmap__cell {
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.05),
-    0 1px 4px rgba(0,0,0,.12) !important;
+    0 1px 4px rgba(0,0,0,.11) !important;
 }
 
 .level-strip__track {
   box-shadow:
-    inset 0 1px 2px rgba(0,0,0,.16),
-    0 1px 4px rgba(0,0,0,.08) !important;
+    inset 0 1px 2px rgba(0,0,0,.15),
+    0 1px 4px rgba(0,0,0,.07) !important;
 }
 
 .level-strip__level {
@@ -153,8 +161,8 @@ select,
   overflow: visible;
 }
 
-/* The online gain marker is attached to the level label itself. Every pulse is
-   generated by the real +1 EXP / 300 s rate: 2 / 300 = 0.006666… EXP. */
+/* The online pulse remains tied to the real +1 EXP / 300 s rate:
+   2 / 300 = 0.006666… EXP. */
 .level-strip__level .online-exp-float {
   position: absolute !important;
   left: calc(100% + 8px) !important;

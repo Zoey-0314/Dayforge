@@ -23,7 +23,11 @@
         "shadow": false,
         "alwaysOnTop": true,
         "resizable": false,
-        "center": true
+        "center": true,
+        "windowEffects": {
+          "effects": ["acrylic"],
+          "color": [255, 255, 255, 30]
+        }
       }
     ],
     "security": {
