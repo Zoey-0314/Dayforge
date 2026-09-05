@@ -23,11 +23,7 @@
         "shadow": false,
         "alwaysOnTop": true,
         "resizable": false,
-        "center": true,
-        "windowEffects": {
-          "effects": ["acrylic"],
-          "color": [255, 255, 255, 30]
-        }
+        "center": true
       }
     ],
     "security": {
@@ -41,6 +37,7 @@
     "shortDescription": "Local-first productivity and growth desktop widget",
     "longDescription": "Dayforge is a persistent Windows desktop productivity widget with EXP, activity heatmaps, tasks, habits, focus timers, and sleep records.",
     "windows": {
+      "minimumWebview2Version": "145.0.3800.47",
       "nsis": {
         "installMode": "currentUser"
       }
