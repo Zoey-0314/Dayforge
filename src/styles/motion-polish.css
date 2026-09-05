@@ -1,17 +1,20 @@
-/* Final motion/corner polish. The transparent gutter lets the glass own the
-   visible corners and gives lightweight ambient effects a little room outside
-   the surface without reintroducing a Windows frame. */
+/* Final motion/corner polish. Native Acrylic now has exactly the same bounds
+   as the visible glass, so there is no exposed square gutter around the card. */
 .widget-shell,
 .widget-shell--expanded {
-  padding: 8px !important;
+  padding: 0 !important;
 }
 
-.widget-card,
-.widget-card--expanded {
+.widget-card {
   width: 100%;
   height: 100%;
-  border-radius: 25px !important;
-  clip-path: inset(0 round 25px) !important;
+  border-radius: 24px !important;
+  clip-path: inset(0 round 24px) !important;
+}
+
+.widget-card--expanded {
+  border-radius: 26px !important;
+  clip-path: inset(0 round 26px) !important;
 }
 
 .widget-card--motion-expand .expanded-grid {
@@ -32,18 +35,6 @@
 @keyframes dayforge-expanded-content-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
   to { opacity: 0; transform: translateY(2px) scale(0.994); }
-}
-
-/* Place the micro EXP marker across the visible glass edge. The window gutter
-   keeps the outer portion drawable instead of clipping it at the card radius. */
-.online-exp-float {
-  right: 1px !important;
-  bottom: 49px !important;
-}
-
-.widget-shell--expanded .online-exp-float {
-  right: 2px !important;
-  bottom: 59px !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

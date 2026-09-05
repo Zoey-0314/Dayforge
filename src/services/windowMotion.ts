@@ -1,10 +1,11 @@
 import { LogicalSize } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-// The native window includes an 8px transparent gutter around the visible
-// glass. The visible glass itself stays 320x320 compact and 980x680 expanded.
-const COMPACT_SIZE = { width: 336, height: 336 };
-const EXPANDED_SIZE = { width: 996, height: 696 };
+// Keep the native Acrylic window exactly the same size as the visible glass.
+// An outer transparent gutter leaves the native Acrylic surface exposed as a
+// square frame, especially over bright browser windows.
+const COMPACT_SIZE = { width: 320, height: 320 };
+const EXPANDED_SIZE = { width: 980, height: 680 };
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
