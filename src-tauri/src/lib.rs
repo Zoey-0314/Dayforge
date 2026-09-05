@@ -113,7 +113,7 @@ fn clip_native_window_to_glass(window: &tauri::WebviewWindow) {
 
 #[cfg(target_os = "windows")]
 fn apply_native_frost(window: &tauri::WebviewWindow) {
-    use std::{ffi::c_void, mem::size_of};
+    use std::{ffi::c_void, mem::{size_of, transmute}};
 
     #[repr(C)]
     struct AccentPolicy {
@@ -130,13 +130,16 @@ fn apply_native_frost(window: &tauri::WebviewWindow) {
         size: usize,
     }
 
-    #[link(name = "user32")]
+    #[link(name = "kernel32")]
     extern "system" {
-        fn SetWindowCompositionAttribute(
-            hwnd: *mut c_void,
-            data: *mut WindowCompositionAttribData,
-        ) -> i32;
+        fn GetModuleHandleW(module_name: *const u16) -> *mut c_void;
+        fn GetProcAddress(module: *mut c_void, proc_name: *const u8) -> *mut c_void;
     }
+
+    type SetWindowCompositionAttributeFn = unsafe extern "system" fn(
+        hwnd: *mut c_void,
+        data: *mut WindowCompositionAttribData,
+    ) -> i32;
 
     const WCA_ACCENT_POLICY: i32 = 19;
     const ACCENT_ENABLE_BLURBEHIND: i32 = 3;
@@ -144,28 +147,66 @@ fn apply_native_frost(window: &tauri::WebviewWindow) {
 
     let Ok(hwnd) = window.hwnd() else { return; };
 
+    // SetWindowCompositionAttribute is intentionally not linked as a normal
+    // user32 import: some Windows SDK import libraries do not export it. Resolve
+    // it at runtime instead so release builds and older SDKs remain link-safe.
+    let user32_name: Vec<u16> = "user32.dll\0".encode_utf16().collect();
+    let module = unsafe { GetModuleHandleW(user32_name.as_ptr()) };
+    if module.is_null() {
+        return;
+    }
+
+    let proc = unsafe {
+        GetProcAddress(
+            module,
+            b"SetWindowCompositionAttribute\0".as_ptr(),
+        )
+    };
+    if proc.is_null() {
+        return;
+    }
+
+    let set_window_composition_attribute: SetWindowCompositionAttributeFn =
+        unsafe { transmute(proc) };
+
     // AccentPolicy uses AABBGGRR. A low-alpha neutral white gives the blur a
     // milky optical scatter without turning the UI gray or creating a second
     // system-backdrop surface. The HWND region clips this same layer.
-    let mut policy = AccentPolicy {
+    let mut acrylic_policy = AccentPolicy {
         accent_state: ACCENT_ENABLE_ACRYLICBLURBEHIND,
         accent_flags: 0,
         gradient_color: 0x20FF_FFFF,
         animation_id: 0,
     };
-    let mut data = WindowCompositionAttribData {
+    let mut acrylic_data = WindowCompositionAttribData {
         attribute: WCA_ACCENT_POLICY,
-        data: &mut policy as *mut AccentPolicy as *mut c_void,
+        data: &mut acrylic_policy as *mut AccentPolicy as *mut c_void,
         size: size_of::<AccentPolicy>(),
     };
 
-    unsafe {
-        // Older Windows builds can reject the acrylic accent state. Fall back
-        // to native blur-behind while keeping the same single HWND surface.
-        if SetWindowCompositionAttribute(hwnd.0 as *mut c_void, &mut data) == 0 {
-            policy.accent_state = ACCENT_ENABLE_BLURBEHIND;
-            policy.gradient_color = 0;
-            let _ = SetWindowCompositionAttribute(hwnd.0 as *mut c_void, &mut data);
+    let acrylic_result = unsafe {
+        set_window_composition_attribute(hwnd.0 as *mut c_void, &mut acrylic_data)
+    };
+
+    if acrylic_result == 0 {
+        // Older Windows builds can reject acrylic. Fall back to native blur
+        // behind, still on the same clipped HWND rather than another surface.
+        let mut blur_policy = AccentPolicy {
+            accent_state: ACCENT_ENABLE_BLURBEHIND,
+            accent_flags: 0,
+            gradient_color: 0,
+            animation_id: 0,
+        };
+        let mut blur_data = WindowCompositionAttribData {
+            attribute: WCA_ACCENT_POLICY,
+            data: &mut blur_policy as *mut AccentPolicy as *mut c_void,
+            size: size_of::<AccentPolicy>(),
+        };
+        unsafe {
+            let _ = set_window_composition_attribute(
+                hwnd.0 as *mut c_void,
+                &mut blur_data,
+            );
         }
     }
 }
