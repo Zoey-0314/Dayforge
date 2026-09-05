@@ -27,6 +27,9 @@ fn suppress_native_window_frame(window: &tauri::WebviewWindow) {
         ) -> i32;
     }
 
+    // The visible shape belongs to our HWND region, not to a second DWM corner
+    // treatment. Keeping DWM rounding disabled prevents a second radius from
+    // being composited around the WebView.
     const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
     const DWMWA_BORDER_COLOR: i32 = 34;
     const DWMWCP_DONOTROUND: u32 = 1;
@@ -78,12 +81,12 @@ fn clip_native_window_to_glass(window: &tauri::WebviewWindow) {
     let Ok(scale) = window.scale_factor() else { return; };
 
     let logical_width = size.width as f64 / scale;
-    let radius_logical = if logical_width <= 336.0 {
+    let radius_logical = if logical_width <= 320.0 {
         24.0
-    } else if logical_width >= 996.0 {
+    } else if logical_width >= 980.0 {
         26.0
     } else {
-        24.0 + 2.0 * ((logical_width - 336.0) / (996.0 - 336.0))
+        24.0 + 2.0 * ((logical_width - 320.0) / (980.0 - 320.0))
     };
     let ellipse = (radius_logical * 2.0 * scale).round().max(1.0) as i32;
 
@@ -108,11 +111,73 @@ fn clip_native_window_to_glass(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn apply_native_frost(window: &tauri::WebviewWindow) {
+    use std::{ffi::c_void, mem::size_of};
+
+    #[repr(C)]
+    struct AccentPolicy {
+        accent_state: i32,
+        accent_flags: i32,
+        gradient_color: u32,
+        animation_id: i32,
+    }
+
+    #[repr(C)]
+    struct WindowCompositionAttribData {
+        attribute: i32,
+        data: *mut c_void,
+        size: usize,
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowCompositionAttribute(
+            hwnd: *mut c_void,
+            data: *mut WindowCompositionAttribData,
+        ) -> i32;
+    }
+
+    const WCA_ACCENT_POLICY: i32 = 19;
+    const ACCENT_ENABLE_BLURBEHIND: i32 = 3;
+    const ACCENT_ENABLE_ACRYLICBLURBEHIND: i32 = 4;
+
+    let Ok(hwnd) = window.hwnd() else { return; };
+
+    // AccentPolicy uses AABBGGRR. A low-alpha neutral white gives the blur a
+    // milky optical scatter without turning the UI gray or creating a second
+    // system-backdrop surface. The HWND region clips this same layer.
+    let mut policy = AccentPolicy {
+        accent_state: ACCENT_ENABLE_ACRYLICBLURBEHIND,
+        accent_flags: 0,
+        gradient_color: 0x20FF_FFFF,
+        animation_id: 0,
+    };
+    let mut data = WindowCompositionAttribData {
+        attribute: WCA_ACCENT_POLICY,
+        data: &mut policy as *mut AccentPolicy as *mut c_void,
+        size: size_of::<AccentPolicy>(),
+    };
+
+    unsafe {
+        // Older Windows builds can reject the acrylic accent state. Fall back
+        // to native blur-behind while keeping the same single HWND surface.
+        if SetWindowCompositionAttribute(hwnd.0 as *mut c_void, &mut data) == 0 {
+            policy.accent_state = ACCENT_ENABLE_BLURBEHIND;
+            policy.gradient_color = 0;
+            let _ = SetWindowCompositionAttribute(hwnd.0 as *mut c_void, &mut data);
+        }
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 fn suppress_native_window_frame(_window: &tauri::WebviewWindow) {}
 
 #[cfg(not(target_os = "windows"))]
 fn clip_native_window_to_glass(_window: &tauri::WebviewWindow) {}
+
+#[cfg(not(target_os = "windows"))]
+fn apply_native_frost(_window: &tauri::WebviewWindow) {}
 
 fn database_migrations() -> Vec<Migration> {
     vec![
@@ -250,6 +315,7 @@ pub fn run() {
                 let _ = window.set_shadow(false);
                 suppress_native_window_frame(&window);
                 clip_native_window_to_glass(&window);
+                apply_native_frost(&window);
             }
 
             Ok(())
@@ -263,6 +329,9 @@ pub fn run() {
             if matches!(event, WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }) {
                 if let Some(webview_window) = window.app_handle().get_webview_window("main") {
                     clip_native_window_to_glass(&webview_window);
+                    if matches!(event, WindowEvent::ScaleFactorChanged { .. }) {
+                        apply_native_frost(&webview_window);
+                    }
                 }
             }
 
