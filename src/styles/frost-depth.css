@@ -1,7 +1,7 @@
 /* Vision-style neutral frosted glass.
-   The desktop blur itself now comes from Tauri's native Acrylic window effect.
-   This layer only adds a restrained milky scatter, optical edge light and
-   contrast support. It deliberately does not recolor Dayforge's UI palette. */
+   The desktop blur now belongs exclusively to the single native Windows HWND
+   frost layer. CSS only paints optical scatter, edge light and contrast; it
+   must never create a second backdrop-blur surface. */
 
 .widget-card,
 .widget-card--expanded {
@@ -9,6 +9,7 @@
     radial-gradient(115% 78% at 8% -8%, rgba(255, 255, 255, 0.19), transparent 45%),
     radial-gradient(76% 54% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 66%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.135), rgba(255, 255, 255, 0.085) 48%, rgba(255, 255, 255, 0.105)) !important;
+  clip-path: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow:
@@ -30,16 +31,16 @@
   mix-blend-mode: screen !important;
 }
 
-/* The smaller cards remain translucent and softly blur the already-frosted
-   native surface beneath them, creating the layered Vision Pro look. */
+/* Smaller cards keep their translucent material separation, but they no
+   longer invoke another backdrop-filter compositor. */
 .feature-panel,
 .expanded-grid .activity-panel {
   background:
     radial-gradient(112% 68% at 10% -10%, rgba(255, 255, 255, 0.14), transparent 48%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.060) 54%, rgba(255, 255, 255, 0.080)) !important;
   border-color: rgba(255, 255, 255, 0.20) !important;
-  backdrop-filter: blur(18px) saturate(106%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(106%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.31),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
@@ -100,8 +101,8 @@
     radial-gradient(118% 74% at 10% -10%, rgba(255, 255, 255, 0.19), transparent 46%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.145), rgba(255, 255, 255, 0.085)) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(24px) saturate(106%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(106%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.28),
     inset 0 0 0 1px rgba(255,255,255,.045) !important;
@@ -110,8 +111,8 @@
 .toast {
   background: rgba(255, 255, 255, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.24) !important;
-  backdrop-filter: blur(20px) saturate(108%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(108%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Foreground colors stay untouched. Dark optical separation keeps white text
