@@ -1,10 +1,11 @@
 /* Vision-style neutral frosted glass.
-   The desktop blur now belongs exclusively to the single native Windows HWND
-   frost layer. CSS only paints optical scatter, edge light and contrast; it
-   must never create a second backdrop-blur surface. */
+   Windows DWM now owns both the Desktop Acrylic backdrop and the outer rounded
+   window shape. CSS only paints optical scatter, edge light and contrast; it
+   must not introduce a second rounded clip or backdrop-blur surface. */
 
 .widget-card,
 .widget-card--expanded {
+  border-radius: 0 !important;
   background:
     radial-gradient(115% 78% at 8% -8%, rgba(255, 255, 255, 0.19), transparent 45%),
     radial-gradient(76% 54% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 66%),
