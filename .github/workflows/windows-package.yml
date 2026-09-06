@@ -70,6 +70,53 @@ jobs:
       - name: Build Dayforge installer
         run: npm run tauri build
 
+      - name: Prepare lightweight update patch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $patchRoot = Join-Path $env:RUNNER_TEMP 'Dayforge-Windows-Update-Patch'
+          Remove-Item $patchRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $patchRoot | Out-Null
+
+          $builtExe = Join-Path $env:GITHUB_WORKSPACE 'src-tauri\target\release\dayforge.exe'
+          if (-not (Test-Path $builtExe -PathType Leaf)) {
+            throw "Release executable not found: $builtExe"
+          }
+
+          Copy-Item $builtExe (Join-Path $patchRoot 'dayforge.exe') -Force
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'scripts\windows\Apply-Dayforge-Update.ps1') (Join-Path $patchRoot 'Apply-Dayforge-Update.ps1') -Force
+
+          @'
+          @echo off
+          setlocal
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Apply-Dayforge-Update.ps1"
+          if errorlevel 1 (
+            echo.
+            echo Update failed. Your existing Dayforge installation and data were left in place.
+            pause
+          )
+          '@ | Set-Content -Path (Join-Path $patchRoot 'Apply-Dayforge-Update.cmd') -Encoding ascii
+
+          @'
+          DAYFORGE UPDATE PATCH
+
+          1. Keep Dayforge installed. Do not uninstall it.
+          2. Extract this ZIP somewhere outside the Dayforge install folder.
+          3. Double-click Apply-Dayforge-Update.cmd.
+          4. The patch closes Dayforge, replaces only dayforge.exe, keeps a .bak backup,
+             leaves the existing SQLite data untouched, and starts Dayforge again.
+
+          This patch expects the existing FixedWebView2 folder from your current installation.
+          '@ | Set-Content -Path (Join-Path $patchRoot 'UPDATE-INSTRUCTIONS.txt') -Encoding utf8
+
+      - name: Upload update patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dayforge-Windows-Update-Patch
+          path: ${{ runner.temp }}/Dayforge-Windows-Update-Patch
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload NSIS installer
         uses: actions/upload-artifact@v4
         with:

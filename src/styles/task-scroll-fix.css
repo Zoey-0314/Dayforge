@@ -1,0 +1,56 @@
+/* Keep large todo collections inside the Todo card instead of letting rows
+   spill below the panel. Daily and persistent tasks each get a bounded,
+   independently scrollable region so every saved task remains clickable. */
+.todo-panel {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden !important;
+}
+
+.todo-panel > .panel-heading,
+.todo-panel > .quick-form {
+  min-height: 0;
+}
+
+.todo-panel .task-section {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.todo-panel .task-section h3 {
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+}
+
+.todo-panel .task-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  touch-action: pan-y;
+}
+
+.todo-panel .task-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.todo-panel .task-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.todo-panel .task-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.todo-panel .task-row {
+  flex: 0 0 auto;
+}
