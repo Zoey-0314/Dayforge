@@ -14,6 +14,62 @@ fn quit_app(app: tauri::AppHandle) {
 }
 
 #[cfg(target_os = "windows")]
+fn strip_native_titlebar(window: &tauri::WebviewWindow) {
+    use std::ffi::c_void;
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetWindowLongPtrW(hwnd: *mut c_void, index: i32) -> isize;
+        fn SetWindowLongPtrW(hwnd: *mut c_void, index: i32, new_long: isize) -> isize;
+        fn SetWindowPos(
+            hwnd: *mut c_void,
+            insert_after: *mut c_void,
+            x: i32,
+            y: i32,
+            cx: i32,
+            cy: i32,
+            flags: u32,
+        ) -> i32;
+    }
+
+    const GWL_STYLE: i32 = -16;
+    const WS_CAPTION: isize = 0x00C0_0000;
+    const WS_SYSMENU: isize = 0x0008_0000;
+    const WS_MINIMIZEBOX: isize = 0x0002_0000;
+    const WS_MAXIMIZEBOX: isize = 0x0001_0000;
+
+    const SWP_NOSIZE: u32 = 0x0001;
+    const SWP_NOMOVE: u32 = 0x0002;
+    const SWP_NOZORDER: u32 = 0x0004;
+    const SWP_NOACTIVATE: u32 = 0x0010;
+    const SWP_FRAMECHANGED: u32 = 0x0020;
+
+    let Ok(hwnd) = window.hwnd() else { return; };
+    let raw_hwnd = hwnd.0 as *mut c_void;
+
+    unsafe {
+        let style = GetWindowLongPtrW(raw_hwnd, GWL_STYLE);
+        let stripped_style = style & !(WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+
+        if stripped_style != style {
+            let _ = SetWindowLongPtrW(raw_hwnd, GWL_STYLE, stripped_style);
+            let _ = SetWindowPos(
+                raw_hwnd,
+                std::ptr::null_mut(),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn strip_native_titlebar(_window: &tauri::WebviewWindow) {}
+
+#[cfg(target_os = "windows")]
 fn apply_native_window_material(window: &tauri::WebviewWindow) {
     use std::{ffi::c_void, mem::size_of};
 
@@ -219,6 +275,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_decorations(false);
                 let _ = window.set_shadow(false);
+                strip_native_titlebar(&window);
                 apply_native_window_material(&window);
             }
 
@@ -237,6 +294,7 @@ pub fn run() {
                     | WindowEvent::ScaleFactorChanged { .. }
             ) {
                 if let Some(webview_window) = window.app_handle().get_webview_window("main") {
+                    strip_native_titlebar(&webview_window);
                     apply_native_window_material(&webview_window);
                 }
             }
