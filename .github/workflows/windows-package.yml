@@ -89,7 +89,7 @@ jobs:
           @'
           @echo off
           setlocal
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Apply-Dayforge-Update.ps1"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Apply-Dayforge-Update.ps1" %*
           if errorlevel 1 (
             echo.
             echo Update failed. Your existing Dayforge installation and data were left in place.
@@ -102,9 +102,15 @@ jobs:
 
           1. Keep Dayforge installed. Do not uninstall it.
           2. Extract this ZIP somewhere outside the Dayforge install folder.
-          3. Double-click Apply-Dayforge-Update.cmd.
+          3. Double-click Apply-Dayforge-Update.cmd. Keep Dayforge open if convenient:
+             the patch can use the running process to find the install folder.
           4. The patch closes Dayforge, replaces only dayforge.exe, keeps a .bak backup,
              leaves the existing SQLite data untouched, and starts Dayforge again.
+          5. If automatic discovery cannot find the install folder, the patch will ask
+             you to paste the Dayforge folder or full path to dayforge.exe.
+
+          Optional manual form:
+          Apply-Dayforge-Update.cmd -InstallDir "C:\path\to\Dayforge"
 
           This patch expects the existing FixedWebView2 folder from your current installation.
           '@ | Set-Content -Path (Join-Path $patchRoot 'UPDATE-INSTRUCTIONS.txt') -Encoding utf8
