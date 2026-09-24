@@ -12,6 +12,7 @@ import './styles/clarity-polish.css';
 import './styles/frost-depth.css';
 import './styles/timer-history-polish.css';
 import './styles/task-scroll-fix.css';
+import './styles/row-delete-controls.css';
 
 void initializeDesktopLifecycle().catch((error) => {
   console.error('Dayforge desktop lifecycle initialization failed:', error);

@@ -1,0 +1,99 @@
+/* Delete controls are separate from the primary row action so a delete click
+   never completes a task or creates a habit check-in. */
+.task-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 23px !important;
+  align-items: stretch !important;
+  gap: 1px !important;
+  padding: 0 4px 0 0 !important;
+  overflow: hidden;
+}
+
+.task-row__complete {
+  min-width: 0;
+  min-height: 31px;
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 4px 5px 8px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.task-row__complete:disabled {
+  cursor: default;
+}
+
+.task-row.is-complete {
+  opacity: 1 !important;
+}
+
+.task-row.is-complete .task-row__complete {
+  opacity: 0.48;
+}
+
+.task-row.is-complete .task-row__title {
+  text-decoration: line-through;
+}
+
+.habit-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 23px !important;
+  align-items: stretch !important;
+  gap: 1px !important;
+  padding: 0 4px 0 0 !important;
+  overflow: hidden;
+}
+
+.habit-row__check {
+  min-width: 0;
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 4px 7px 10px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.task-row:hover,
+.habit-row:hover {
+  background: rgba(79, 169, 235, 0.11) !important;
+}
+
+.row-delete-button {
+  width: 21px;
+  height: 21px;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent !important;
+  color: rgba(231, 247, 255, 0.38);
+  opacity: 0.72;
+  transition: color 120ms ease, background 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+
+.task-row:hover .row-delete-button,
+.habit-row:hover .row-delete-button {
+  opacity: 1;
+}
+
+.row-delete-button:hover {
+  background: rgba(255, 88, 112, 0.15) !important;
+  color: rgba(255, 218, 225, 0.96);
+}
+
+.row-delete-button:active {
+  transform: scale(0.90);
+}

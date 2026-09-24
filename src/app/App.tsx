@@ -13,7 +13,7 @@ import {
   ONLINE_RULES,
 } from '../features/experience/onlineExperienceService';
 import { Heatmap, type HeatmapDatum, type HeatmapMode } from '../features/heatmap/Heatmap';
-import { checkInHabit, createHabit, listHabits, type HabitItem } from '../features/habits/habitService';
+import { checkInHabit, createHabit, deleteHabit, listHabits, type HabitItem } from '../features/habits/habitService';
 import { SleepPanel } from '../features/sleep/SleepPanel';
 import {
   cancelTimer,
@@ -28,7 +28,7 @@ import {
   type TimerCategory,
   type TimerSession,
 } from '../features/timer/timerService';
-import { completeTodo, createTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
+import { completeTodo, createTodo, deleteTodo, listTodos, type TaskType, type TodoItem } from '../features/todo/todoService';
 import { animateDayforgeWindowResize } from '../services/windowMotion';
 
 type ResizeMotion = 'expand' | 'collapse' | null;
@@ -225,6 +225,14 @@ export function App() {
     } catch (cause) { setToast(cause instanceof Error ? cause.message : 'Could not complete task.'); }
   }
 
+  async function removeTodo(id: string) {
+    try {
+      await deleteTodo(id);
+      setToast('Task deleted');
+      await refreshForMode(mode);
+    } catch (cause) { setToast(cause instanceof Error ? cause.message : 'Could not delete task.'); }
+  }
+
   async function submitHabit(event: FormEvent) {
     event.preventDefault();
     if (!habitTitle.trim()) return;
@@ -241,6 +249,14 @@ export function App() {
       setToast(result.rewarded ? `Check-in +${result.experience} EXP` : 'Check-in saved · daily EXP cap reached');
       await refreshForMode(mode);
     } catch (cause) { setToast(cause instanceof Error ? cause.message : 'Could not save check-in.'); }
+  }
+
+  async function removeHabit(id: string) {
+    try {
+      await deleteHabit(id);
+      setToast('Habit deleted');
+      await refreshForMode(mode);
+    } catch (cause) { setToast(cause instanceof Error ? cause.message : 'Could not delete habit.'); }
   }
 
   async function handleTimerStart() {
@@ -396,8 +412,8 @@ export function App() {
                   </select>
                   <button type="submit">Add</button>
                 </form>
-                <TaskSection title="Daily · refreshes each date" tasks={dailyTodos} onComplete={finishTodo} />
-                <TaskSection title="Persistent · stays until done" tasks={persistentTodos} onComplete={finishTodo} />
+                <TaskSection title="Daily · refreshes each date" tasks={dailyTodos} onComplete={finishTodo} onDelete={removeTodo} />
+                <TaskSection title="Persistent · stays until done" tasks={persistentTodos} onComplete={finishTodo} onDelete={removeTodo} />
               </section>
 
               <section className="feature-panel timer-panel">
@@ -487,13 +503,24 @@ export function App() {
                 </form>
                 <div className="habit-list">
                   {habits.length === 0 ? <EmptyState text="No habits yet." /> : habits.map((habit) => (
-                    <button className="habit-row" key={habit.id} onClick={() => void checkHabit(habit.id)}>
-                      <span className="habit-row__main">
-                        <strong>{habit.title}</strong>
-                        <small>{habit.difficulty} · {habit.totalCount} total · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small>
-                      </span>
-                      <span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span>
-                    </button>
+                    <div className="habit-row" key={habit.id}>
+                      <button className="habit-row__check" type="button" onClick={() => void checkHabit(habit.id)}>
+                        <span className="habit-row__main">
+                          <strong>{habit.title}</strong>
+                          <small>{habit.difficulty} · {habit.totalCount} total · max {habit.rewardCapPerDay ?? '∞'} rewarded/day</small>
+                        </span>
+                        <span className="habit-row__count"><strong>{habit.todayCount}</strong><small>today</small></span>
+                      </button>
+                      <button
+                        className="row-delete-button"
+                        type="button"
+                        aria-label={`Delete habit ${habit.title}`}
+                        title="Delete habit"
+                        onClick={() => void removeHabit(habit.id)}
+                      >
+                        <X size={11} strokeWidth={1.8} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </section>
@@ -510,17 +537,43 @@ export function App() {
   );
 }
 
-function TaskSection({ title, tasks, onComplete }: { title: string; tasks: TodoItem[]; onComplete: (id: string) => Promise<void>; }) {
+function TaskSection({
+  title,
+  tasks,
+  onComplete,
+  onDelete,
+}: {
+  title: string;
+  tasks: TodoItem[];
+  onComplete: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
   return (
     <div className="task-section">
       <h3>{title}</h3>
       <div className="task-list">
         {tasks.length === 0 ? <EmptyState text="Nothing here yet." /> : tasks.map((task) => (
-          <button className={`task-row ${task.completed ? 'is-complete' : ''}`} key={task.id} disabled={task.completed} onClick={() => void onComplete(task.id)}>
-            <span className="task-checkbox">{task.completed ? '✓' : ''}</span>
-            <span className="task-row__title">{task.title}</span>
-            <span className={`difficulty difficulty--${task.difficulty}`}>{task.difficulty}</span>
-          </button>
+          <div className={`task-row ${task.completed ? 'is-complete' : ''}`} key={task.id}>
+            <button
+              className="task-row__complete"
+              type="button"
+              disabled={task.completed}
+              onClick={() => void onComplete(task.id)}
+            >
+              <span className="task-checkbox">{task.completed ? '✓' : ''}</span>
+              <span className="task-row__title">{task.title}</span>
+              <span className={`difficulty difficulty--${task.difficulty}`}>{task.difficulty}</span>
+            </button>
+            <button
+              className="row-delete-button"
+              type="button"
+              aria-label={`Delete task ${task.title}`}
+              title="Delete task"
+              onClick={() => void onDelete(task.id)}
+            >
+              <X size={11} strokeWidth={1.8} />
+            </button>
+          </div>
         ))}
       </div>
     </div>
